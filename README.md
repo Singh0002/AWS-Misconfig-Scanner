@@ -5,13 +5,13 @@ The AWS Misconfiguration Scanner is an AI-assisted security tool designed to ide
 
 
 ## Features
-It will scan s3 configurations
-Will scan IAM configurations
+It will scan S3 configurations
+It will scan IAM configurations
 Check configurations against predefined rules 
-will be runable in terminal
-Results shown in streamlet interface 
-Downloadable html file 
 use ai api to explain detected findings 
+Results shown in streamlet interface 
+Downloadable html file
+
 
 
 ## Technologies Used
@@ -19,7 +19,7 @@ python
 boto3
 aws
 streamlit
-gitguh
+github
 ai api 
 
 ## How It Works
@@ -28,10 +28,8 @@ the aws boto3 will use those credentials to connect the a specfic aws account
 the boto3 will retrieve s3 and iam configuration information
 the configurations then will be scanned against predefined rules 
 
-
-
-
 ## Installation
+
 
 ## Usage
 
