@@ -8,7 +8,6 @@ iam = boto3.client('iam')
 def collector_userName():
     print("\n--- Getting all User Names ---")
     try:
-        
         response = iam.list_users()
         users = response.get('Users', [])
         
@@ -17,9 +16,6 @@ def collector_userName():
             user_names = user['UserName']
             user_list.append({"User": user_names})
             
-            
-
-    
         return user_list
     
     except ClientError as e:
@@ -28,9 +24,6 @@ def collector_userName():
     except NoCredentialsError:
         print("Error: No AWS credentials configured.")
         return []
-
-
-
 
 # Checks mfa status through inputting all usernames collected from collector_userName function           
 def check_mfa(username):
@@ -54,9 +47,6 @@ def check_mfa(username):
         print(f"An error occurred: {{e.response['Error']['Message']}}")
         return []         
 
-
-
-
 # Checks password policies such as length of password so far
 def check_password_policies(username):
     
@@ -75,10 +65,6 @@ def check_password_policies(username):
     except ClientError as e:
         print(f"An error occurred: {{e.response['Error']['Message']}}")
         return [] 
-
-
-
-
 
 # Checks user policies for any wildcards in the account
 def check_statement_wildcards(username): 
@@ -114,8 +100,7 @@ def check_statement_wildcards(username):
                     print("User  has wildcards in: ", s,username)
 
             
-            
-    except ClientError as e:
+        except ClientError as e:
         print(f"An error occurred: {{e.response['Error']['Message']}}")
         return []      
 
