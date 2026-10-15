@@ -100,9 +100,9 @@ def check_statement_wildcards(username):
                     print("User  has wildcards in: ", s,username)
 
             
-        except ClientError as e:
+    except ClientError as e:
         print(f"An error occurred: {{e.response['Error']['Message']}}")
-        return []      
+        return []
 
 
 
