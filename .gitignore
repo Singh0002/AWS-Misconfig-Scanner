@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# scan database (has scan results in it)
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
