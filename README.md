@@ -61,6 +61,12 @@ $env:ANTHROPIC_API_KEY="your-key-here"        # Windows (PowerShell)
 export ANTHROPIC_API_KEY=your-key-here        # Ubuntu
 ```
 
+6. Check your setup. This only reads from AWS and never prints keys. Add `--ai-call` to also make one tiny AI request that confirms your key and credits work.
+```
+python test_connection.py
+python test_connection.py --ai-call
+```
+
 ## Running the app
 ```
 streamlit run app.py

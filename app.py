@@ -10,6 +10,8 @@ import os
 import pandas as pd
 import streamlit as st
 
+import coordinator
+import scan_progress
 from storage import db
 
 # rule_id (what gets saved in the database) -> name shown on the page
@@ -108,28 +110,74 @@ scan_tab, results_tab, saved_tab = st.tabs(["Scan", "Results", "Saved scans"])
 
 
 # Scan tab
+def run_requested_scan(bar):
+    """Runs the scan that Start scan asked for and updates the progress bar."""
+    request = st.session_state.get("scan_request")
+    runner = getattr(coordinator, "run_scan", None)
+    if request is None or runner is None:
+        # nothing to run (or the coordinator isn't written yet)
+        st.session_state.progress = scan_progress.idle()
+        st.session_state.scan_notice = ("info", "Scanning isn't hooked up yet.")
+        st.session_state.scan_request = None
+        st.rerun()
+
+    def on_progress(done, total, message):
+        st.session_state.progress = scan_progress.update(st.session_state.progress, done, total, message)
+        bar.progress(scan_progress.fraction(st.session_state.progress), text=message)
+
+    try:
+        scan = runner(request["services"], request["rules"], on_progress)
+    except Exception as error:
+        # only the error type is shown, in case the message has account details
+        st.session_state.progress = scan_progress.finish(st.session_state.progress, False)
+        st.session_state.scan_notice = (
+            "error", "The scan stopped (" + type(error).__name__ + "). Nothing in AWS was changed.")
+    else:
+        st.session_state.progress = scan_progress.finish(st.session_state.progress, True)
+        st.session_state.scan_notice = None
+        st.session_state.scan = scan
+    st.session_state.scan_request = None
+    st.rerun()
+
+
 with scan_tab:
+    if "progress" not in st.session_state:
+        st.session_state.progress = scan_progress.idle()
+    progress = st.session_state.progress
+    # Everything on this tab is locked while a scan runs. Changing a checkbox
+    # would rerun the script and restart the scan.
+    running = not scan_progress.can_start(progress)
+
     selected_services = []
     selected_rules = []
 
     s3_col, iam_col = st.columns(2)
     for service, column in [("S3", s3_col), ("IAM", iam_col)]:
         with column:
-            if st.checkbox("**" + service + "**", value=True):
+            if st.checkbox("**" + service + "**", value=True, key="service_" + service, disabled=running):
                 selected_services.append(service)
                 for rule_id in RULES[service]:
-                    if st.checkbox(RULES[service][rule_id], value=True, key=rule_id):
+                    if st.checkbox(RULES[service][rule_id], value=True, key=rule_id, disabled=running):
                         selected_rules.append(rule_id)
 
-    if st.button("Start scan", type="primary"):
+    start_clicked = st.button("Start scan", type="primary", disabled=running)
+    bar = st.progress(scan_progress.fraction(progress), text=scan_progress.text(progress))
+    # messages are kept in session_state because the page reruns right after a scan ends
+    notice = st.session_state.get("scan_notice")
+    if notice:
+        getattr(st, notice[0])(notice[1])
+
+    if start_clicked and scan_progress.can_start(progress):
         if len(selected_services) == 0 or len(selected_rules) == 0:
             st.warning("Pick at least one service and one rule.")
         else:
-            # TODO (Martin): call the coordinator here
-            st.info("Scanning isn't hooked up yet.")
-
-    # TODO (Ajay): real progress + block a second scan while one is running
-    st.progress(0, text="No scan running.")
+            st.session_state.progress = scan_progress.start()
+            st.session_state.scan_notice = None
+            st.session_state.scan_request = {"services": selected_services, "rules": selected_rules}
+            # rerun so the button and checkboxes are drawn locked before the scan starts
+            st.rerun()
+    elif running:
+        run_requested_scan(bar)
 
 
 # Saved scans tab. This is above the Results tab on purpose so that a scan
