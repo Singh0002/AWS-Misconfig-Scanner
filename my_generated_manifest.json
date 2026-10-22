@@ -1,0 +1,5 @@
+{
+    "username": "mock-username",
+    "bucket_name": "mock-bucket",
+    "policy_name": "AdminFullAccess"
+}

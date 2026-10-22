@@ -1,3 +1,4 @@
+import results
 import os
 import json
 import csv
@@ -5,6 +6,8 @@ import io
 from datetime import datetime, timezone
 import boto3
 from dateutil.tz import tzutc
+from botocore.exceptions import ClientError, NoCredentialsError
+import results
 
 # Check 5 s3 configurations wildcard principal, acl, public access off, versioning disabled, https not enforced
 def check_s3_configs(s3, bucket_name):
@@ -65,7 +68,6 @@ def check_s3_configs(s3, bucket_name):
         # If the bucket has no policy at all, it's failing HTTPS enforcement
         if e.response['Error']['Code'] == 'NoSuchBucketPolicy':
             findings["https_not_enforced"] = "FAIL"
-            findings["wildcard_principal_detected"] = "FAIL"
         else:
             findings["https_not_enforced"] = "ERROR_CHECKING"
             
@@ -151,7 +153,7 @@ def check_iam_configs(iam, username, policy_name):
     return findings
     
     
-def run_scan(manifest_path="manifest.json"):
+def old_run_scan(manifest_path="manifest.json"):
     if not os.path.exists(manifest_path):
         return {"status": "ERROR", "message": f"Manifest tracking file missing: {manifest_path}"}
 
@@ -176,4 +178,52 @@ def run_scan(manifest_path="manifest.json"):
         "target_resources": {"user": username, "bucket": bucket_name},
         "results": combined_results
     }
+
+
+
+
+RULE_MAP = {  # your key -> (service, rule_id, issue, severity)
+    "public_acl_grant":           ("S3", "s3_public_acl", "Bucket ACL grants public access", "High"),
+    "block_public_access_off":    ("S3", "s3_block_public_access", "Block Public Access is not fully on", "High"),
+    "wildcard_principal_detected":("S3", "s3_wildcard_principal", "Bucket policy allows any principal", "High"),
+    "versioning_disabled":        ("S3", "s3_versioning", "Versioning is not enabled", "Medium"),
+    "https_not_enforced":         ("S3", "s3_https_only", "HTTPS is not enforced", "Medium"),
+    "admin_wildcard_detected":    ("IAM", "iam_admin_wildcard", "Policy grants admin wildcards", "High"),
+    "user_without_mfa":           ("IAM", "iam_user_mfa", "User has no MFA device", "High"),
+    "access_key_unused_90_days":  ("IAM", "iam_unused_access_key", "Access key unused 90+ days", "Medium"),
+}
+STATUS = {"PASS": "pass", "FAIL": "fail"}  # anything else -> incomplete
+
+
+# run_scan connected to app.py 
+def run_scan(selected_services, selected_rules, on_progress, manifest_path="manifest.json"):
+    
+    
+    scan = results.new_scan(selected_services)
+    scan_id = scan["metadata"]["scan_id"]
+    report = old_run_scan(manifest_path)    # uses previous testing scan data for new run_scan function for scanner on app.py
+    
+    
+    if report.get("status") != "COMPLETED":
+        raise RuntimeError(report.get("message", "Scan failed"))    
+        
+    resources = report["target_resources"]
+    items = [(k, v) for k, v in report["results"].items()
+             if k in RULE_MAP and RULE_MAP[k][1] in selected_rules and RULE_MAP[k][0] in selected_services]
+             
+             
+    for i, (key, value) in enumerate(items, 1):
+        service, rule_id, issue, severity = RULE_MAP[key]
+        resource = resources["bucket"] if service == "S3" else resources["user"]
+        on_progress(i, len(items), f"Checking {rule_id}")
+        status = STATUS.get(value, "incomplete")
+        check = results.make_check(scan_id, service, resource, rule_id, status,
+                                   reason=None if status != "incomplete" else "Check could not complete.")
+        scan["checks"].append(check)
+        if status == "fail":
+            finding = results.make_finding(check, issue, severity)
+            scan["findings"].append(finding)
+            scan["explanations"].append(results.make_explanation(finding["finding_id"], "pending"))
+    scan["metadata"]["scan_status"] = "completed"
+    return scan
     

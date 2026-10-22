@@ -14,6 +14,19 @@ import coordinator
 import scan_progress
 from storage import db
 
+
+# New make test environment and upload dummy configurations for scanner
+from moto import mock_aws
+from Configuration_Test_Environment import configuration_creation, configuration_creation_pass
+
+# Start mock and run either configuration_creation or configuration_creation_pass function for pass and fail test cases
+if "mock" not in st.session_state:
+    m = mock_aws()
+    m.start()
+    configuration_creation_pass("mock-user-pass", "mock-bucket-pass", "manifest.json")
+    st.session_state.mock = m
+# End of new implementation
+
 # rule_id (what gets saved in the database) -> name shown on the page
 RULES = {
     "S3": {

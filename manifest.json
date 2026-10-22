@@ -1,0 +1,6 @@
+{
+    "username": "mock-user-pass",
+    "bucket_name": "mock-bucket-pass",
+    "policy_name": "AdminRestrictedAccess",
+    "mfa_expected": true
+}
