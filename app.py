@@ -23,7 +23,7 @@ from Configuration_Test_Environment import configuration_creation, configuration
 if "mock" not in st.session_state:
     m = mock_aws()
     m.start()
-    configuration_creation_pass("mock-user-pass", "mock-bucket-pass", "manifest.json")
+    configuration_creation("mock-user-fail", "mock-bucket-fail", "manifest.json")
     st.session_state.mock = m
 # End of new implementation
 

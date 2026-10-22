@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 import boto3
 from dateutil.tz import tzutc
 from botocore.exceptions import ClientError, NoCredentialsError
-import results
 
 # Check 5 s3 configurations wildcard principal, acl, public access off, versioning disabled, https not enforced
 def check_s3_configs(s3, bucket_name):
