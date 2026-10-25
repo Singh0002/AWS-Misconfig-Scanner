@@ -1,146 +1,153 @@
-import boto3
-from botocore.exceptions import ClientError, NoCredentialsError
+"""collectors/iam.py
 
-# Initialize the AWS STS (Security Token Service) client
-iam = boto3.client('iam')
+Reads, for every IAM user: inline policies, attached managed policies,
+and MFA devices.
+Read-only calls only: list_users, list_user_policies, get_user_policy,
+list_attached_user_policies, get_policy, get_policy_version, list_mfa_devices.
 
-# Function to retrieve all user names from iam service
-def collector_userName():
-    print("\n--- Getting all User Names ---")
+Returns {"records": [...], "errors": [...]}
+
+Record shape (one per user). Every field is always present:
+    {
+        "service": "IAM",
+        "resource_id": "<username>",
+        "inline_policies": {
+            "status": "available" | "failed",
+            "value": [{"name": ..., "document": {...}}] or None
+        },
+        "attached_policies": {
+            "status": ...,
+            "value": [{"name": ..., "arn": ..., "document": {...}}] or None
+        },
+        "mfa_devices": {
+            "status": ...,
+            "value": {"DeviceCount": int} or None
+        },
+    }
+
+What the statuses mean:
+    available - AWS answered, value holds the data. A user with no policies
+                or no MFA device is "available" with an empty list or a
+                count of 0. IAM list calls never report "missing".
+    failed    - we could not find out (denied, throttled, network);
+                rules must treat this as incomplete, never as a pass
+
+Notes for the rules:
+    - Policy documents are already parsed into dictionaries, so the wildcard
+      rule can read "Statement" directly.
+    - If any step of reading a user's policies fails, the whole setting is
+      "failed", so a half-read list can never look like a pass.
+    - Policies a user inherits through groups are not collected.
+
+Error shape (one per failed setting, or one if the user listing fails):
+    {"operation": "<api call name>", "resource_id": "<user or None>",
+     "message": "<error code only>"}
+"""
+
+
+from botocore.exceptions import BotoCoreError, ClientError
+from collectors.common import read_setting, error_code
+import json
+
+def list_users(iam):
+    user_names = []
+    for page in iam.get_paginator("list_users").paginate():
+        for user in page["Users"]:
+            user_names.append(user["UserName"])
+            
+    return user_names
+
+def read_login(iam, username):
+    status, value, code = read_setting(
+        lambda: iam.get_login_profile(UserName=username),
+        missing_codes=("NoSuchEntity",),
+    )
+    return {"status": status, "value": value, "code": code}
+
+def get_mfa_devices(iam, username):
+    count = 0 
+    paginator = iam.get_paginator("list_mfa_devices")
+    for page in paginator.paginate(UserName=username):
+        count += len(page["MFADevices"])
+    return{"DeviceCount": count} 
+    
+    
+    
+def get_attached_policies(iam, username):
+    policies = []
+    paginator = iam.get_paginator("list_attached_user_policies")
+    for page in paginator.paginate(UserName=username):
+        for item in page["AttachedPolicies"]:
+            arn = item["PolicyArn"]
+            version_id = iam.get_policy(PolicyArn=arn)["Policy"]["DefaultVersionId"]
+            version = iam.get_policy_version(PolicyArn=arn, VersionId=version_id)
+            policies.append({"name": item["PolicyName"], "arn": arn,
+                             "document": version["PolicyVersion"]["Document"]})
+    return policies
+    
+    
+    
+
+def get_inline_policies(iam,username):
+    policies = []
+    paginator = iam.get_paginator("list_user_policies")
+    for page in paginator.paginate(UserName=username):
+        for name in page["PolicyNames"]:
+            response = iam.get_user_policy(UserName=username, PolicyName=name)
+            policies.append({"name": name, "document": response["PolicyDocument"]})
+    return policies
+    
+    
+    
+def read_inline_policies(iam, username):
+    status, value, code = read_setting(lambda: get_inline_policies(iam, username))
+    return {"status": status, "value": value, "code": code}
+
+
+def read_attached_policies(iam, username):
+    status, value, code = read_setting(lambda: get_attached_policies(iam, username))
+    return {"status": status, "value": value, "code": code}
+
+
+def read_mfa_devices(iam, username):
+    status, value, code = read_setting(lambda: get_mfa_devices(iam, username))
+    return {"status": status, "value": value, "code": code}
+
+    
+    
+SETTINGS = [
+    ("inline_policies", read_inline_policies, "get_user_policy"),
+    ("attached_policies", read_attached_policies, "get_policy_version"),
+    ("mfa_devices", read_mfa_devices, "list_mfa_devices"),
+]
+
+
+        
+    
+def collect_iam(aws_session):
+    iam = aws_session.client("iam")
+    records, errors = [], []
+    
     try:
-        response = iam.list_users()
-        users = response.get('Users', [])
+        usernames = list_users(iam)
+    except (BotoCoreError, ClientError) as e:
+        return {"records": [], "errors": [
+            {"operation": "list_users", "resource_id": None,
+             "message": error_code(e)}]}
+             
+             
+    for us in usernames:
+        record = {"service": "IAM", "resource_id": us}
         
-        user_list = []
-        for user in users:
-            user_names = user['UserName']
-            user_list.append({"User": user_names})
-            
-        return user_list
-    
-    except ClientError as e:
-        print(f"AWS API Error: {e.response['Error']['Message']}")
-        return []
-    except NoCredentialsError:
-        print("Error: No AWS credentials configured.")
-        return []
+        for field, helper, operation in SETTINGS:
+            setting = helper(iam, us)
+            record[field] = {"status": setting["status"], "value": setting["value"]}
 
-# Checks mfa status through inputting all usernames collected from collector_userName function           
-def check_mfa(username):
-    issues = []
-    
-    #Call list_mfa_devices for given parameter username
-    #Get MFADevices list to check if mfa is activated
-    #Return true if activated else return false
-    
-    try:    
-            
-        response = iam.list_mfa_devices(UserName = username)
-        mfa_devices = response.get("MFADevices",[])
-    
-        if mfa_devices:            
-            return True
-        else:
-            return False 
-                
-    except ClientError as e:
-        print(f"An error occurred: {{e.response['Error']['Message']}}")
-        return []         
-
-# Checks password policies such as length of password so far
-def check_password_policies(username):
-    
-    # Retrieve PasswordPolicy dictionary
-    # From dictionary get minimum password length list
-    # Print username and its password length
-    try:
-                
-        response = iam.get_account_password_policy()
-        passwordPolicy = response.get("PasswordPolicy",{})
-        
-        Min_Pass = passwordPolicy.get("MinimumPasswordLength",[])
-        print(f"The password length for {username} is {Min_Pass}")
-        
-        
-    except ClientError as e:
-        print(f"An error occurred: {{e.response['Error']['Message']}}")
-        return [] 
-
-# Checks user policies for any wildcards in the account
-def check_statement_wildcards(username): 
-    
-    
-    try:    
-        
-        # Retrieve PolicyNames list from each account
-        response = iam.list_user_policies(UserName = username)
-        in_policies = response.get("PolicyNames",[])
-        
-        #If there are no policies print no policies exist
-        if not in_policies:
-            print(in_policies, "no Policies", username)
-            
-        
-        # For loop to go through policy in policynames list 
-        # Retrieve PolicyDocument dictionary from each username with given username and policy name
-        for policy_name in in_policies:
-            Policy_Doc = iam.get_user_policy(UserName = username, PolicyName = policy_name)
-            Policy_Doc2 = Policy_Doc.get("PolicyDocument",{})
-            
-            
-            # Retrieve statement list from policy document dictionary
-            # If the list contains something make it insto a list
-            statements = Policy_Doc2.get("Statement",[])
-            if isinstance(statements, dict):
-                statements = [statements]
-            
-            # Call check_user_wildcards methods to go through each statement    
-            for s in statements:   
-                if (check_user_wildcards(s)):
-                    print("User  has wildcards in: ", s,username)
-
-            
-    except ClientError as e:
-        print(f"An error occurred: {{e.response['Error']['Message']}}")
-        return []
+            # only this function records errors; the helpers just report status
+            if setting["status"] == "failed":
+                errors.append({"operation": operation, "resource_id": us,
+                               "message": setting["code"]})
+        records.append(record)
 
 
-
-
-# Function to go through each statement in the Policy Document checks for * in resource/action list from dictionary statement
-def check_user_wildcards(statement):
-    
-    if (statement.get("Effect",[]) != "Allow"):
-        return False
-            
-    # Retrive lists action and resource from Statement dictionary
-    action = statement.get("Action",[])
-    resource = statement.get("Resource",[])
-    
-    # If action and resource contain something make it into a list
-    if isinstance(action,str):
-        action = [action]
-    if isinstance(resource,str):        
-        resource = [resource]
-    
-    # Return true if '*' wildcard is found in action or resource     
-    wildcard_action_found = '*'  in action
-    wildcard_resource_found = '*' in resource
-    
-    
-    return wildcard_action_found or wildcard_resource_found
-
-
-# Ignore        
-if __name__ == "__main__":
-    result = collector_userName()
-    print(result)
-    for user in result:
-        user_names1 = user["User"]
-        print("Input account:", user_names1)
-        has_mfa = check_mfa(user_names1)
-    
-        if has_mfa:
-            print(f"User: {user_names1} -> MFA is enabled")
-        else:
-            print(f"User: {user_names1} -> No MFA is enabled")
+    return {"records": records, "errors": errors}
