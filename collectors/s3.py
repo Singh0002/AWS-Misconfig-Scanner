@@ -1,8 +1,3 @@
-from botocore.exceptions import BotoCoreError, ClientError
-from collectors.common import read_setting, error_code
-import json
-
-
 """collectors/s3.py
 
 Reads, for every bucket: ACL, Block Public Access settings, versioning,
@@ -52,6 +47,14 @@ Error shape (one per failed setting, or one if the bucket listing fails):
     {"operation": "<api call name>", "resource_id": "<bucket or None>",
      "message": "<error code only>"}
 """
+
+
+
+from botocore.exceptions import BotoCoreError, ClientError
+from collectors.common import read_setting, error_code
+import json
+
+
 
 def list_buckets(s3):
     bucket_names = []
