@@ -1,5 +1,5 @@
 from botocore.exceptions import BotoCoreError, ClientError
-from collectors.common import read_setting
+from collectors.common import read_setting, error_code
 import json
 
 
