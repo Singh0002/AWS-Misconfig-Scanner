@@ -134,8 +134,12 @@ def run_requested_scan(bar):
             "error", "The scan stopped (" + type(error).__name__ + "). Nothing in AWS was changed.")
     else:
         st.session_state.progress = scan_progress.finish(st.session_state.progress, True)
-        st.session_state.scan_notice = None
+        st.session_state.scan_notice = ("success", "Scan finished. See the Results tab.")
         st.session_state.scan = scan
+        # a failed save still leaves the results on the page
+        saved, error = db.save_scan(scan)
+        if not saved:
+            st.session_state.scan_notice = ("warning", "Scan finished but couldn't be saved: " + error["message"])
     st.session_state.scan_request = None
     st.rerun()
 

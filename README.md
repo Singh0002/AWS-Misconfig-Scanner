@@ -53,6 +53,17 @@ pip install -r requirements.txt
 ```
 aws configure
 ```
+The AWS user needs the `SecurityAudit` policy (it's read only). If you don't have the AWS CLI you can make the files yourself. Put this in `C:\Users\<you>\.aws\credentials` (Windows) or `~/.aws/credentials` (Ubuntu):
+```
+[default]
+aws_access_key_id = your-key-id
+aws_secret_access_key = your-secret
+```
+and this in a file called `config` in the same folder:
+```
+[default]
+region = us-east-1
+```
 
 5. Set your Anthropic API key (only needed for AI explanations). Don't put the key in the code or commit it.
 ```
@@ -71,7 +82,7 @@ python test_connection.py --ai-call
 ```
 streamlit run app.py
 ```
-It opens at http://localhost:8501. Don't use the VS Code run button, it runs plain python and nothing will open. Press Ctrl+C in the terminal to stop it.
+It opens at http://localhost:8501. Pick the services and rules and press Start scan. Finished scans save automatically and show up in Saved scans. Don't use the VS Code run button, it runs plain python and nothing will open. Press Ctrl+C in the terminal to stop it.
 
 ## Database
 Saved scans go in a local SQLite file called `cloudguardian.db`. The app makes it and its tables the first time it runs.
