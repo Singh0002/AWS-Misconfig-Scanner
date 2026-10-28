@@ -63,6 +63,22 @@ def read_login(iam, username):
         missing_codes=("NoSuchEntity",),
     )
     return {"status": status, "value": value, "code": code}
+    
+def get_access_keys(iam, username):
+    access_keys = []
+    paginator = iam.get_paginator("list_access_keys")
+    for page in paginator.paginate(UserName=username):
+        for item in page["AccessKeyMetadata"]:
+            key_id = item["AccessKeyId"]
+            used = iam.get_access_key_last_used(AccessKeyId=key_id)["AccessKeyLastUsed"]
+            last_used = used.get("LastUsedDate")
+            access_keys.append({"accesskeyid": key_id[-4:],
+                                "status": item["Status"], 
+                                "keyused": "Used" if last_used else "Never-Used",
+                                "lastuseddate": last_used.isoformat() if last_used else None,
+                                "created": item["CreateDate"].isoformat()})
+            
+    return access_keys
 
 def get_mfa_devices(iam, username):
     count = 0 
@@ -97,6 +113,30 @@ def get_inline_policies(iam,username):
             policies.append({"name": name, "document": response["PolicyDocument"]})
     return policies
     
+def get_password_policy(iam):
+    pass_policy = iam.get_account_password_policy()["PasswordPolicy"]
+    return{"passwordlength": pass_policy.get("MinimumPasswordLength"),
+                    "requiresymbols": pass_policy.get("RequireSymbols",False),
+                    "requirenumbers": pass_policy.get("RequireNumbers",False),
+                    "requireuppercase": pass_policy.get("RequireUppercaseCharacters",False),
+                    "requirelowercase": pass_policy.get("RequireLowercaseCharacters",False),
+                    "maxage": pass_policy.get("MaxPasswordAge"),
+                    "passwordreuse": pass_policy.get("PasswordReusePrevention")
+                    }
+                    
+                    
+                    
+def get_root_mfa(iam):
+    mfa = iam.get_account_summary()["SummaryMap"]
+    return{"mfaenablend": mfa.get("AccountMFAEnabled", 0)}
+
+def read_root_mfa(iam):
+    status, value, code = read_setting(lambda: get_root_mfa(iam))
+    return {"status": status, "value": value, "code": code}
+    
+def read_password_policy(iam):
+    status, value, code = read_setting(lambda: get_password_policy(iam), missing_codes=("NoSuchEntity",))
+    return {"status": status, "value": value, "code": code}
     
     
 def read_inline_policies(iam, username):
@@ -112,6 +152,10 @@ def read_attached_policies(iam, username):
 def read_mfa_devices(iam, username):
     status, value, code = read_setting(lambda: get_mfa_devices(iam, username))
     return {"status": status, "value": value, "code": code}
+    
+def read_access_keys(iam, username):
+    status, value, code = read_setting(lambda: get_access_keys(iam, username))
+    return {"status": status, "value": value, "code": code}
 
     
     
@@ -119,6 +163,7 @@ SETTINGS = [
     ("inline_policies", read_inline_policies, "get_user_policy"),
     ("attached_policies", read_attached_policies, "get_policy_version"),
     ("mfa_devices", read_mfa_devices, "list_mfa_devices"),
+    ("access_keys", read_access_keys, "get_access_key_last_used"),
 ]
 
 
@@ -128,12 +173,44 @@ def collect_iam(aws_session):
     iam = aws_session.client("iam")
     records, errors = [], []
     
+    mfa_setting = read_root_mfa(iam)
+    records.append({"service": "IAM",
+        "resource_id": "RootMFA",
+        "root_mfa": {
+            "status": mfa_setting["status"],
+            "value": mfa_setting["value"]}
+    })
+    
+    if mfa_setting["status"] == "failed":
+        errors.append({
+            "operation": "get_account_summary",
+            "resource_id": None,
+            "message": mfa_setting["code"]
+        })
+    
+    pw_setting = read_password_policy(iam)
+    records.append({"service": "IAM",
+        "resource_id": "AccountPasswordPolicy",
+        "password_policy": {
+            "status": pw_setting["status"],
+            "value": pw_setting["value"]}
+    })
+    
+    if pw_setting["status"] == "failed":
+        errors.append({
+            "operation": "get_account_password_policy",
+            "resource_id": None,
+            "message": pw_setting["code"]
+        })
+    
     try:
         usernames = list_users(iam)
     except (BotoCoreError, ClientError) as e:
-        return {"records": [], "errors": [
+        errors.append(
             {"operation": "list_users", "resource_id": None,
-             "message": error_code(e)}]}
+             "message": error_code(e)})
+        return {"records": records, "errors": errors}
+            
              
              
     for us in usernames:
@@ -151,3 +228,5 @@ def collect_iam(aws_session):
 
 
     return {"records": records, "errors": errors}
+
+
