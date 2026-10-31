@@ -1,4 +1,4 @@
-"""The IAM permission and MFA rules (E-3 S-5-2, S-5-3, S-5-4).
+"""The five IAM rules (E-3 S-5-2, S-5-3, S-5-4, E-3 S-6-2, S-6-3).
 
 Results use the same shape as detection/s3_rules.py:
 
@@ -13,24 +13,44 @@ The user dict the collector should pass in:
             {"name": "AdminFullAccess", "type": "inline", "document": {...}},
         ],
         "mfa_devices": <list_mfa_devices()["MFADevices"]>,
+        "access_keys": [   # list_access_keys()["AccessKeyMetadata"], plus each
+                           # key's LastUsedDate from get_access_key_last_used
+            {"AccessKeyId": ..., "Status": "Active", "CreateDate": <datetime>,
+             "LastUsedDate": <datetime> or None},
+        ],
         "errors": {"policies": "AccessDenied", ...},  # data that couldn't be read
     }
 
-The root MFA rule takes the account summary from get_account_summary()
-instead (either the whole response or just its "SummaryMap").
+Two rules are for the whole account instead of one user:
+    - root MFA takes the account summary from get_account_summary()
+      (either the whole response or just its "SummaryMap")
+    - password policy takes get_account_password_policy()["PasswordPolicy"],
+      or None if the account has no password policy
 
-The password policy and unused access key rules are Sprint 3 (E-3 S-6).
+The unused access key rule isn't in check_user yet, because the collector
+doesn't pass access keys through findings.py until E-3 S-6-4.
 """
+
+from datetime import datetime, timezone
 
 from detection.policy import as_list, has_condition, statements
 
 ADMIN_ACTIONS = {"*", "*:*"}
+
+# a strong password policy needs at least this length and all four of these
+PASSWORD_MIN_LENGTH = 14
+PASSWORD_REQUIREMENTS = ["RequireUppercaseCharacters", "RequireLowercaseCharacters",
+                         "RequireNumbers", "RequireSymbols"]
+
+MAX_UNUSED_DAYS = 90
 
 # rule_id -> issue text and severity for the finding
 RULE_INFO = {
     "iam_admin_wildcard": ("Policy allows every action on every resource", "High"),
     "iam_user_mfa": ("User has no MFA device", "High"),
     "iam_root_mfa": ("Root account has no MFA", "High"),
+    "iam_password_policy": ("Account password policy is weak or missing", "Medium"),
+    "iam_unused_access_key": ("Access key unused for more than 90 days", "Medium"),
 }
 
 
@@ -128,6 +148,63 @@ def check_root_mfa(account_summary, error=None):
     if enabled == 1:
         return make_result("iam_root_mfa", "root", "pass")
     return make_result("iam_root_mfa", "root", "fail", {"AccountMFAEnabled": enabled})
+
+
+def check_password_policy(policy, error=None):
+    """Rule 9: the account password policy is at least 14 characters and
+    needs uppercase, lowercase, numbers and symbols.
+
+    error is the reason get_account_password_policy failed, if it did.
+    No policy at all fails, because the AWS default has none of these.
+    """
+    if error is not None:
+        return make_result("iam_password_policy", "account", "incomplete",
+                           reason=f"Couldn't read the password policy ({error}).")
+    if policy is None:
+        return make_result("iam_password_policy", "account", "fail", {"policy": "not set"})
+
+    problems = []
+    length = policy.get("MinimumPasswordLength") or 0
+    if length < PASSWORD_MIN_LENGTH:
+        problems.append(f"Minimum length is {length}, should be at least {PASSWORD_MIN_LENGTH}")
+    for requirement in PASSWORD_REQUIREMENTS:
+        if not policy.get(requirement):
+            problems.append(f"{requirement} is off")
+
+    if problems:
+        return make_result("iam_password_policy", "account", "fail", {"problems": problems})
+    return make_result("iam_password_policy", "account", "pass")
+
+
+def check_unused_access_keys(user, now=None):
+    """Rule 10: no active access key has gone unused for more than 90 days.
+
+    A key that was never used counts from the day it was created. Inactive
+    keys are skipped because they can't be used to sign in. now can be set
+    so tests get the same answer every day.
+    """
+    incomplete = read_error("iam_unused_access_key", user, "access_keys")
+    if incomplete:
+        return incomplete
+
+    now = now or datetime.now(timezone.utc)
+    stale = []
+    for key in user["access_keys"] or []:
+        if key.get("Status") != "Active":
+            continue
+        since = key.get("LastUsedDate") or key.get("CreateDate")
+        if since is None:
+            return make_result("iam_unused_access_key", user["name"], "incomplete",
+                               reason="An access key has no creation or last used date.")
+        days = (now - since).days
+        if days > MAX_UNUSED_DAYS:
+            # only the last 4 characters, so the evidence never holds a whole key ID
+            stale.append({"key_ending": key.get("AccessKeyId", "")[-4:], "days_unused": days,
+                          "never_used": key.get("LastUsedDate") is None})
+
+    if stale:
+        return make_result("iam_unused_access_key", user["name"], "fail", {"stale_keys": stale})
+    return make_result("iam_unused_access_key", user["name"], "pass")
 
 
 USER_RULES = {
