@@ -11,6 +11,7 @@ import pandas as pd
 import streamlit as st
 
 import coordinator
+import finding_details
 import scan_progress
 from storage import db
 
@@ -69,6 +70,29 @@ def find_check(scan, check_id):
         if check["check_id"] == check_id:
             return check
     return None
+
+
+def show_finding(scan, finding):
+    """The details panel for one finding: what the rule found, then the AI explanation."""
+    info = finding_details.details(scan, finding)
+    with st.container(border=True):
+        st.markdown("**" + info["severity"] + ":** " + info["issue"])
+        # resource names go in backticks so a name like my_user can't turn into italics
+        st.markdown("Resource `" + info["resource"] + "` | " + info["service"]
+                    + " | " + rule_name(info["rule_id"]))
+        if info["evidence"]:
+            st.caption("What the rule found")
+            st.text("\n".join(info["evidence"]))
+
+        st.caption("AI explanation")
+        ai = info["explanation"]
+        if ai["state"] == "available":
+            if ai["text"]:
+                st.markdown(ai["text"])
+            for number, step in enumerate(ai["steps"], 1):
+                st.markdown(str(number) + ". " + step)
+        else:
+            st.info(ai["message"])
 
 
 @st.dialog("Delete this scan?")
@@ -285,8 +309,11 @@ with results_tab:
 
     st.dataframe(table, hide_index=True, width="stretch")
 
-    # TODO (Ajay): details + AI explanation for the selected finding
-    st.caption("Finding details and AI explanations will show here.")
+    # details and the AI explanation for the finding picked here (E-4 S-7-3)
+    if findings:
+        picked = st.selectbox("Finding details", findings,
+                              format_func=lambda f: finding_details.label(scan, f))
+        show_finding(scan, picked)
 
     with st.expander("Incomplete checks and errors"):
         incomplete_rows = []
