@@ -13,6 +13,7 @@ import streamlit as st
 import coordinator
 import finding_details
 import scan_progress
+from ai import client
 from storage import db
 
 # rule_id (what gets saved in the database) -> name shown on the page
@@ -124,7 +125,7 @@ with settings_col.popover("Settings", width="stretch"):
     st.button("Check connection", disabled=True)
 
     st.divider()
-    st.toggle("AI explanations", value=True)
+    st.toggle("AI explanations", value=True, key="explain")
     if os.environ.get("ANTHROPIC_API_KEY"):
         st.caption("Anthropic API key found.")
     else:
@@ -164,6 +165,19 @@ def run_requested_scan(bar):
         saved, error = db.save_scan(scan)
         if not saved:
             st.session_state.scan_notice = ("warning", "Scan finished but couldn't be saved: " + error["message"])
+        elif st.session_state.get("explain", True) and scan["findings"]:
+            # explanations are saved on their own so a failure here can't touch the scan
+            bar.progress(1.0, text="Getting explanations for the findings...")
+            scan["explanations"] = client.explain_scan(scan)
+            db.save_explanations(scan["metadata"]["scan_id"], scan["explanations"])
+            missing = 0
+            for explanation in scan["explanations"]:
+                if explanation["explanation_status"] == "unavailable":
+                    missing += 1
+            if missing > 0:
+                st.session_state.scan_notice = (
+                    "warning", "Scan finished, but " + str(missing) + " finding(s) have no explanation. "
+                    "The rule results are still correct.")
     st.session_state.scan_request = None
     st.rerun()
 
