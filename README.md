@@ -94,6 +94,18 @@ You can set `CLOUDGUARDIAN_DB` to put it somewhere else. It has scan results in 
 ## Results format
 All the modules pass results around in the same format, defined in `results.py`. Use its `make_check`, `make_finding`, `make_explanation` and `make_error` functions so the results can be saved straight to the database.
 
+## Explanations
+After a scan the app sends the findings to Anthropic and shows a short explanation and fix steps for each one under Finding details on the Results tab. They get saved with the scan, so they show up again when you open it from Saved scans.
+
+Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key is only kept while the page is open. You can also set `ANTHROPIC_API_KEY` like in Setup so you don't have to paste it every time.
+
+Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
+
+Not done yet:
+- tests for the explanation code
+- the password policy and unused access key rules aren't hooked up to scans yet, that's waiting on the IAM collector changes
+- the downloadable report doesn't have the explanations in it yet
+
 ## Tests
 ```
 python -m unittest discover tests
