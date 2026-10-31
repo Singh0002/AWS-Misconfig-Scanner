@@ -18,7 +18,7 @@ import anthropic
 import results
 from ai import formatter
 
-# set ANTHROPIC_MODEL to try a different model without changing the code
+# used when no model is picked in Settings. ANTHROPIC_MODEL can change it
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5")
 TIMEOUT_SECONDS = 30
 MAX_RETRIES = 1
@@ -110,10 +110,10 @@ def finding_data(scan, finding):
     }
 
 
-def ask(client, batch):
+def ask(client, batch, model):
     """Sends one batch of findings. Returns the reply text, or None if there isn't one."""
     response = client.messages.create(
-        model=MODEL,
+        model=model,
         max_tokens=8000,
         system=INSTRUCTIONS,
         messages=[{"role": "user", "content": json.dumps(batch, indent=1)}],
@@ -132,8 +132,10 @@ def ask(client, batch):
     return None
 
 
-def explain_scan(scan, api_key=None):
+def explain_scan(scan, api_key=None, model=None):
     """Returns one explanation per finding. Problems go in scan["errors"]."""
+    if model is None:
+        model = MODEL
     scan_id = scan["metadata"]["scan_id"]
     finding_ids = []
     for finding in scan["findings"]:
@@ -159,7 +161,7 @@ def explain_scan(scan, api_key=None):
             batch_data.append(finding_data(scan, finding))
 
         try:
-            reply = ask(client, batch_data)
+            reply = ask(client, batch_data, model)
         except anthropic.APIError as error:
             # only the error type, the message could have request details in it
             reply = None
