@@ -1,9 +1,10 @@
 """collectors/iam.py
 
-Reads, for every IAM user: inline policies, attached managed policies,
+Reads, for every IAM user: inline policies, attached managed policies, password policy, acces keys
 and MFA devices.
 Read-only calls only: list_users, list_user_policies, get_user_policy,
-list_attached_user_policies, get_policy, get_policy_version, list_mfa_devices.
+list_attached_user_policies, get_policy, get_policy_version, list_mfa_devices,
+get_access_key_last_used, get_account_password_policy.
 
 Returns {"records": [...], "errors": [...]}
 
@@ -42,6 +43,15 @@ Notes for the rules:
 Error shape (one per failed setting, or one if the user listing fails):
     {"operation": "<api call name>", "resource_id": "<user or None>",
      "message": "<error code only>"}
+     
+     
+*** Ignore ***    
+def read_login(iam, username):
+    status, value, code = read_setting(
+        lambda: iam.get_login_profile(UserName=username),
+        missing_codes=("NoSuchEntity",),
+    )
+    return {"status": status, "value": value, "code": code}
 """
 
 
@@ -57,12 +67,6 @@ def list_users(iam):
             
     return user_names
 
-def read_login(iam, username):
-    status, value, code = read_setting(
-        lambda: iam.get_login_profile(UserName=username),
-        missing_codes=("NoSuchEntity",),
-    )
-    return {"status": status, "value": value, "code": code}
     
 def get_access_keys(iam, username):
     access_keys = []
@@ -101,8 +105,6 @@ def get_attached_policies(iam, username):
                              "document": version["PolicyVersion"]["Document"]})
     return policies
     
-    
-    
 
 def get_inline_policies(iam,username):
     policies = []
@@ -124,15 +126,6 @@ def get_password_policy(iam):
                     "passwordreuse": pass_policy.get("PasswordReusePrevention")
                     }
                     
-                    
-                    
-def get_root_mfa(iam):
-    mfa = iam.get_account_summary()["SummaryMap"]
-    return{"mfaenablend": mfa.get("AccountMFAEnabled", 0)}
-
-def read_root_mfa(iam):
-    status, value, code = read_setting(lambda: get_root_mfa(iam))
-    return {"status": status, "value": value, "code": code}
     
 def read_password_policy(iam):
     status, value, code = read_setting(lambda: get_password_policy(iam), missing_codes=("NoSuchEntity",))
@@ -173,35 +166,12 @@ def collect_iam(aws_session):
     iam = aws_session.client("iam")
     records, errors = [], []
     
-    mfa_setting = read_root_mfa(iam)
-    records.append({"service": "IAM",
-        "resource_id": "RootMFA",
-        "root_mfa": {
-            "status": mfa_setting["status"],
-            "value": mfa_setting["value"]}
-    })
-    
-    if mfa_setting["status"] == "failed":
-        errors.append({
-            "operation": "get_account_summary",
-            "resource_id": None,
-            "message": mfa_setting["code"]
-        })
-    
     pw_setting = read_password_policy(iam)
-    records.append({"service": "IAM",
-        "resource_id": "AccountPasswordPolicy",
-        "password_policy": {
-            "status": pw_setting["status"],
-            "value": pw_setting["value"]}
-    })
-    
     if pw_setting["status"] == "failed":
-        errors.append({
-            "operation": "get_account_password_policy",
-            "resource_id": None,
-            "message": pw_setting["code"]
-        })
+        errors.append({"operation": "get_account_password_policy",
+                       "resource_id": None, "message": pw_setting["code"]})
+    password_policy = {"status": pw_setting["status"], "value": pw_setting["value"]}
+
     
     try:
         usernames = list_users(iam)
@@ -209,7 +179,7 @@ def collect_iam(aws_session):
         errors.append(
             {"operation": "list_users", "resource_id": None,
              "message": error_code(e)})
-        return {"records": records, "errors": errors}
+        return {"records": [], "errors": errors, "password_policy": password_policy}
             
              
              
@@ -227,6 +197,4 @@ def collect_iam(aws_session):
         records.append(record)
 
 
-    return {"records": records, "errors": errors}
-
-
+    return {"records": records, "errors": errors, "password_policy": password_policy}
