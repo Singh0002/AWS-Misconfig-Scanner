@@ -4,8 +4,8 @@ app.py calls explain_scan(scan) after the rules finish. It returns one
 explanation per finding, made with results.make_explanation. It never
 changes the checks, findings or severity.
 
-The key comes from the ANTHROPIC_API_KEY environment variable so it never
-goes in the repo. If there's no key, the request fails, or it takes longer
+The key is the one pasted in Settings, or else the ANTHROPIC_API_KEY
+environment variable, so it never goes in the repo. If there's no key, the request fails, or it takes longer
 than 30 seconds, those findings are just marked unavailable.
 """
 
@@ -145,7 +145,7 @@ def explain_scan(scan, api_key=None):
         api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         scan["errors"].append(results.make_error(
-            scan_id, "AI", "explain_scan", "No ANTHROPIC_API_KEY set."))
+            scan_id, "AI", "explain_scan", "No API key set."))
         return formatter.parse_reply(None, finding_ids)
 
     client = anthropic.Anthropic(api_key=api_key, timeout=TIMEOUT_SECONDS, max_retries=MAX_RETRIES)

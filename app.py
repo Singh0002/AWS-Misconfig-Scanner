@@ -126,10 +126,14 @@ with settings_col.popover("Settings", width="stretch"):
 
     st.divider()
     st.toggle("AI explanations", value=True, key="explain")
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    # the pasted key only lives in this browser session, it's never saved to a file
+    st.text_input("Anthropic API key", type="password", key="api_key")
+    if st.session_state.api_key:
+        st.caption("Using the key you pasted. It's gone when you close the page.")
+    elif os.environ.get("ANTHROPIC_API_KEY"):
         st.caption("Anthropic API key found.")
     else:
-        st.caption("No Anthropic API key found. Set ANTHROPIC_API_KEY to turn on explanations.")
+        st.caption("No Anthropic API key. Paste one above or set ANTHROPIC_API_KEY.")
 
 scan_tab, results_tab, saved_tab = st.tabs(["Scan", "Results", "Saved scans"])
 
@@ -168,7 +172,8 @@ def run_requested_scan(bar):
         elif st.session_state.get("explain", True) and scan["findings"]:
             # explanations are saved on their own so a failure here can't touch the scan
             bar.progress(1.0, text="Getting explanations for the findings...")
-            scan["explanations"] = client.explain_scan(scan)
+            # no pasted key means explain_scan uses ANTHROPIC_API_KEY instead
+            scan["explanations"] = client.explain_scan(scan, st.session_state.get("api_key") or None)
             db.save_explanations(scan["metadata"]["scan_id"], scan["explanations"])
             missing = 0
             for explanation in scan["explanations"]:

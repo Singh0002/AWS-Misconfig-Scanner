@@ -65,7 +65,7 @@ and this in a file called `config` in the same folder:
 region = us-east-1
 ```
 
-5. Set your Anthropic API key (only needed for AI explanations). Don't put the key in the code or commit it.
+5. Set your Anthropic API key (only needed for AI explanations). The easy way is to paste it in Settings in the app. It's only kept while the page is open and never saved anywhere, so you paste it again next time. Or set it once like below so you don't have to. Don't put the key in the code or commit it.
 ```
 set ANTHROPIC_API_KEY=your-key-here           # Windows (cmd)
 $env:ANTHROPIC_API_KEY="your-key-here"        # Windows (PowerShell)
