@@ -13,46 +13,40 @@ import results
 
 def is_valid(item):
     """True if one item from the reply has everything we need."""
-    if not isinstance(item, dict):
+    if not isinstance(item, dict) or not isinstance(item.get("risk_explanation"), str):
         return False
-    if not isinstance(item.get("finding_id"), str):
+    if item["risk_explanation"].strip() == "" or not isinstance(item.get("recommended_steps"), list):
         return False
-    text = item.get("risk_explanation")
-    if not isinstance(text, str) or text.strip() == "":
-        return False
-    steps = item.get("recommended_steps")
-    if not isinstance(steps, list):
-        return False
-    for step in steps:
+    for step in item["recommended_steps"]:
         if not isinstance(step, str):
             return False
     return True
 
 
 def parse_reply(text, finding_ids):
+    try:
+        items = json.loads(text)["explanations"]
+    except (TypeError, ValueError, KeyError):
+        # no reply, bad JSON, or the wrong shape
+        items = []
+    if not isinstance(items, list):
+        items = []
+
     # finding_id -> the item from the reply
     matched = {}
-    if text:
-        try:
-            data = json.loads(text)
-        except ValueError:
-            data = None
-        if isinstance(data, dict) and isinstance(data.get("explanations"), list):
-            for item in data["explanations"]:
-                if is_valid(item) and item["finding_id"] in finding_ids:
-                    matched[item["finding_id"]] = item
+    for item in items:
+        if is_valid(item) and item.get("finding_id") in finding_ids:
+            matched[item["finding_id"]] = item
 
     explanations = []
     for finding_id in finding_ids:
-        item = matched.get(finding_id)
-        if item is None:
+        if finding_id not in matched:
             explanations.append(results.make_explanation(finding_id, "unavailable"))
             continue
-
+        item = matched[finding_id]
         steps = []
         for step in item["recommended_steps"]:
             if step.strip():
                 steps.append(step.strip())
-        explanations.append(results.make_explanation(
-            finding_id, "available", item["risk_explanation"].strip(), steps))
+        explanations.append(results.make_explanation(finding_id, "available", item["risk_explanation"].strip(), steps))
     return explanations

@@ -177,12 +177,12 @@ def run_requested_scan(bar):
         saved, error = db.save_scan(scan)
         if not saved:
             st.session_state.scan_notice = ("warning", "Scan finished but couldn't be saved: " + error["message"])
-        elif st.session_state.get("explain", True) and scan["findings"]:
+        elif st.session_state.explain and scan["findings"]:
             # explanations are saved on their own so a failure here can't touch the scan
             bar.progress(1.0, text="Getting explanations for the findings...")
             # no pasted key means explain_scan uses ANTHROPIC_API_KEY instead
-            model = MODELS[st.session_state.get("model", "Opus")]
-            scan["explanations"] = client.explain_scan(scan, st.session_state.get("api_key") or None, model)
+            model = MODELS[st.session_state.model]
+            scan["explanations"] = client.explain_scan(scan, st.session_state.api_key, model)
             db.save_explanations(scan["metadata"]["scan_id"], scan["explanations"])
             missing = 0
             for explanation in scan["explanations"]:
