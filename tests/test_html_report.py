@@ -110,5 +110,151 @@ class ReportEscapingTests(unittest.TestCase):
         self.assertNotIn('onclick="', page)
 
 
+
+def explained_scan(status="available"):
+    """make_scan() plus an AI explanation for the High finding."""
+    scan = make_scan()
+    admin = scan["findings"][1]
+    scan["explanations"].append(results.make_explanation(
+        admin["finding_id"], status, "Anyone with this user's keys can do anything.",
+        ["Remove the admin policy", "Give only the permissions the user needs"]))
+    return scan
+
+
+class ExplanationsSectionTests(unittest.TestCase):
+    def test_available_explanation_shows_text_and_numbered_steps(self):
+        page = html_report.explanations_html(explained_scan())
+        self.assertIn("Anyone with this user&#x27;s keys can do anything.", page)
+        self.assertIn("<ol>", page)
+        self.assertIn("<li>Remove the admin policy</li>", page)
+
+    def test_finding_without_explanation_says_so(self):
+        page = html_report.explanations_html(explained_scan())
+        # the Medium finding has no explanation record
+        self.assertIn("No AI explanation for this finding.", page)
+
+    def test_unavailable_explanation_says_the_rule_result_still_counts(self):
+        self.assertIn("still correct", html_report.explanations_html(explained_scan("unavailable")))
+
+    def test_ai_text_is_escaped(self):
+        scan = make_scan()
+        scan["explanations"].append(results.make_explanation(
+            scan["findings"][0]["finding_id"], "available", "<script>alert(1)</script>", ["<b>step</b>"]))
+        page = html_report.explanations_html(scan)
+        self.assertNotIn("<script>", page)
+        self.assertNotIn("<b>", page)
+
+    def test_no_findings(self):
+        scan = make_scan()
+        scan["findings"] = []
+        self.assertIn("nothing to explain", html_report.explanations_html(scan))
+
+
+class IncompleteSectionTests(unittest.TestCase):
+    def test_lists_incomplete_checks_with_reason(self):
+        page = html_report.incomplete_html(make_scan())
+        self.assertIn("locked-bucket", page)
+        self.assertIn("Couldn&#x27;t read the bucket policy (AccessDenied).", page)
+        self.assertIn("not counted as passed", page)
+
+    def test_lists_scan_errors(self):
+        scan = make_scan()
+        scan["errors"].append(results.make_error(scan["metadata"]["scan_id"], "AI", "messages.create",
+                                                 "APITimeoutError"))
+        self.assertIn("APITimeoutError", html_report.incomplete_html(scan))
+
+    def test_none(self):
+        scan = make_scan()
+        scan["checks"] = [c for c in scan["checks"] if c["status"] != "incomplete"]
+        self.assertIn("Every selected check ran", html_report.incomplete_html(scan))
+
+
+class FullReportTests(unittest.TestCase):
+    def test_page_has_every_section(self):
+        page = html_report.build_report(explained_scan())
+        self.assertTrue(page.startswith("<!DOCTYPE html>"))
+        for heading in ["Scan details", "Findings", "Explanations and fix steps",
+                        "Incomplete checks and errors"]:
+            self.assertIn("<h2>" + heading + "</h2>", page)
+
+    def test_page_has_no_scripts_or_outside_links(self):
+        page = html_report.build_report(explained_scan())
+        self.assertNotIn("<script", page)
+        self.assertNotIn("http://", page)
+        self.assertNotIn("https://", page)
+
+    def test_file_name_has_the_scan_time(self):
+        scan = make_scan()
+        scan["metadata"]["scan_time"] = "2026-11-01T14:30:00+00:00"
+        self.assertEqual(html_report.report_file_name(scan), "cloudguardian-report-2026-11-01-1430.html")
+
+
+class SavedScanReportTests(unittest.TestCase):
+    """E-4 S-10-5: a scan reopened from Saved scans gives the same report content."""
+
+    def setUp(self):
+        import tempfile
+        from storage import db
+
+        self.db = db
+        self.tmp = tempfile.TemporaryDirectory()
+        self.path = self.tmp.name + "/test.db"
+        db.init_db(self.path)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_reopened_scan_has_the_same_report(self):
+        scan = explained_scan()
+        ok, error = self.db.save_scan(scan, self.path)
+        self.assertTrue(ok, error)
+        ok, error = self.db.save_explanations(scan["metadata"]["scan_id"], scan["explanations"], self.path)
+        self.assertTrue(ok, error)
+        loaded, error = self.db.load_scan(scan["metadata"]["scan_id"], self.path)
+        self.assertIsNone(error)
+
+        original = html_report.build_report(scan)
+        reopened = html_report.build_report(loaded)
+        for text in ["admin-user", "bad-bucket", "locked-bucket", "<li>Remove the admin policy</li>",
+                     "High: 1, Medium: 1, Low: 0, Passed: 1, Incomplete: 1"]:
+            self.assertIn(text, original)
+            self.assertIn(text, reopened)
+        self.assertEqual(len(original), len(reopened))
+
+
+class DownloadButtonTests(unittest.TestCase):
+    """E-4 S-10-5: the Results tab offers the report once a scan is open."""
+
+    def setUp(self):
+        import os
+        import tempfile
+        from streamlit.testing.v1 import AppTest
+
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["CLOUDGUARDIAN_DB"] = os.path.join(self.tmp.name, "test.db")
+        self.at = AppTest.from_file(os.path.join(os.path.dirname(__file__), "..", "app.py"),
+                                    default_timeout=20)
+
+    def tearDown(self):
+        import os
+        os.environ.pop("CLOUDGUARDIAN_DB", None)
+        self.tmp.cleanup()
+
+    def button(self):
+        return [b for b in self.at.get("download_button") if b.proto.label == "Download report"][0]
+
+    def test_button_offers_an_html_file_when_a_scan_is_open(self):
+        self.at.session_state.scan = explained_scan()
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        self.assertFalse(self.button().proto.disabled)
+        self.assertTrue(self.button().proto.url.endswith(".html"))
+
+    def test_button_is_disabled_with_no_scan(self):
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        self.assertTrue(self.button().proto.disabled)
+
+
 if __name__ == "__main__":
     unittest.main()

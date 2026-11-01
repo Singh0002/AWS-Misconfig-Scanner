@@ -14,6 +14,7 @@ import coordinator
 import finding_details
 import scan_progress
 from ai import client
+from report import html_report
 from storage import db
 
 # rule_id (what gets saved in the database) -> name shown on the page
@@ -386,6 +387,10 @@ with results_tab:
         if len(error_rows) > 0:
             st.dataframe(pd.DataFrame(error_rows), hide_index=True, width="stretch")
 
-    # TODO: report download (Sprint 3)
-    st.download_button("Download report", data="", file_name="cloudguardian-report.html",
-                       disabled=True)
+    # the report for whatever scan is open, new or saved (E-4 S-10)
+    if scan is None:
+        st.download_button("Download report", data="", file_name="cloudguardian-report.html",
+                           disabled=True)
+    else:
+        st.download_button("Download report", data=html_report.build_report(scan),
+                           file_name=html_report.report_file_name(scan), mime="text/html")
