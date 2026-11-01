@@ -1,9 +1,10 @@
 """collectors/iam.py
 
-Reads, for every IAM user: inline policies, attached managed policies,
+Reads, for every IAM user: inline policies, attached managed policies, password policy, acces keys
 and MFA devices.
 Read-only calls only: list_users, list_user_policies, get_user_policy,
-list_attached_user_policies, get_policy, get_policy_version, list_mfa_devices.
+list_attached_user_policies, get_policy, get_policy_version, list_mfa_devices,
+get_access_key_last_used, get_account_password_policy.
 
 Returns {"records": [...], "errors": [...]}
 
@@ -42,6 +43,15 @@ Notes for the rules:
 Error shape (one per failed setting, or one if the user listing fails):
     {"operation": "<api call name>", "resource_id": "<user or None>",
      "message": "<error code only>"}
+     
+     
+*** Ignore ***    
+def read_login(iam, username):
+    status, value, code = read_setting(
+        lambda: iam.get_login_profile(UserName=username),
+        missing_codes=("NoSuchEntity",),
+    )
+    return {"status": status, "value": value, "code": code}
 """
 
 
@@ -57,12 +67,22 @@ def list_users(iam):
             
     return user_names
 
-def read_login(iam, username):
-    status, value, code = read_setting(
-        lambda: iam.get_login_profile(UserName=username),
-        missing_codes=("NoSuchEntity",),
-    )
-    return {"status": status, "value": value, "code": code}
+    
+def get_access_keys(iam, username):
+    access_keys = []
+    paginator = iam.get_paginator("list_access_keys")
+    for page in paginator.paginate(UserName=username):
+        for item in page["AccessKeyMetadata"]:
+            key_id = item["AccessKeyId"]
+            used = iam.get_access_key_last_used(AccessKeyId=key_id)["AccessKeyLastUsed"]
+            last_used = used.get("LastUsedDate")
+            access_keys.append({"accesskeyid": key_id[-4:],
+                                "status": item["Status"], 
+                                "keyused": "Used" if last_used else "Never-Used",
+                                "lastuseddate": last_used.isoformat() if last_used else None,
+                                "created": item["CreateDate"].isoformat()})
+            
+    return access_keys
 
 def get_mfa_devices(iam, username):
     count = 0 
@@ -85,8 +105,6 @@ def get_attached_policies(iam, username):
                              "document": version["PolicyVersion"]["Document"]})
     return policies
     
-    
-    
 
 def get_inline_policies(iam,username):
     policies = []
@@ -97,6 +115,21 @@ def get_inline_policies(iam,username):
             policies.append({"name": name, "document": response["PolicyDocument"]})
     return policies
     
+def get_password_policy(iam):
+    pass_policy = iam.get_account_password_policy()["PasswordPolicy"]
+    return{"passwordlength": pass_policy.get("MinimumPasswordLength"),
+                    "requiresymbols": pass_policy.get("RequireSymbols",False),
+                    "requirenumbers": pass_policy.get("RequireNumbers",False),
+                    "requireuppercase": pass_policy.get("RequireUppercaseCharacters",False),
+                    "requirelowercase": pass_policy.get("RequireLowercaseCharacters",False),
+                    "maxage": pass_policy.get("MaxPasswordAge"),
+                    "passwordreuse": pass_policy.get("PasswordReusePrevention")
+                    }
+                    
+    
+def read_password_policy(iam):
+    status, value, code = read_setting(lambda: get_password_policy(iam), missing_codes=("NoSuchEntity",))
+    return {"status": status, "value": value, "code": code}
     
     
 def read_inline_policies(iam, username):
@@ -112,6 +145,10 @@ def read_attached_policies(iam, username):
 def read_mfa_devices(iam, username):
     status, value, code = read_setting(lambda: get_mfa_devices(iam, username))
     return {"status": status, "value": value, "code": code}
+    
+def read_access_keys(iam, username):
+    status, value, code = read_setting(lambda: get_access_keys(iam, username))
+    return {"status": status, "value": value, "code": code}
 
     
     
@@ -119,6 +156,7 @@ SETTINGS = [
     ("inline_policies", read_inline_policies, "get_user_policy"),
     ("attached_policies", read_attached_policies, "get_policy_version"),
     ("mfa_devices", read_mfa_devices, "list_mfa_devices"),
+    ("access_keys", read_access_keys, "get_access_key_last_used"),
 ]
 
 
@@ -128,12 +166,21 @@ def collect_iam(aws_session):
     iam = aws_session.client("iam")
     records, errors = [], []
     
+    pw_setting = read_password_policy(iam)
+    if pw_setting["status"] == "failed":
+        errors.append({"operation": "get_account_password_policy",
+                       "resource_id": None, "message": pw_setting["code"]})
+    password_policy = {"status": pw_setting["status"], "value": pw_setting["value"]}
+
+    
     try:
         usernames = list_users(iam)
     except (BotoCoreError, ClientError) as e:
-        return {"records": [], "errors": [
+        errors.append(
             {"operation": "list_users", "resource_id": None,
-             "message": error_code(e)}]}
+             "message": error_code(e)})
+        return {"records": [], "errors": errors, "password_policy": password_policy}
+            
              
              
     for us in usernames:
@@ -150,4 +197,4 @@ def collect_iam(aws_session):
         records.append(record)
 
 
-    return {"records": records, "errors": errors}
+    return {"records": records, "errors": errors, "password_policy": password_policy}
