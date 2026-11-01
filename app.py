@@ -43,10 +43,6 @@ MODELS = {
 
 LOGO = "assets/logo.png"
 
-# Render sets RENDER on its servers. A key saved there would be used by
-# everyone who opens the link, so "Remember this key" is only for local runs.
-LOCAL = not os.environ.get("RENDER")
-
 st.set_page_config(page_title="CloudGuardian", page_icon=LOGO, layout="wide")
 
 
@@ -141,21 +137,20 @@ with settings_col.popover("Settings", width="stretch"):
     if "api_key" not in st.session_state:
         st.session_state.api_key = ""
         st.session_state.remember = False
-        if LOCAL and client.saved_key():
+        if client.saved_key():
             st.session_state.api_key = client.saved_key()
             st.session_state.remember = True
     st.text_input("Anthropic API key", type="password", key="api_key")
 
-    if LOCAL:
-        st.checkbox("Remember this key on this computer", key="remember")
-        # unticking it deletes the saved key
-        if not st.session_state.remember:
-            client.forget_key()
-        elif st.session_state.api_key and st.session_state.api_key != client.saved_key():
-            client.save_key(st.session_state.api_key)
+    st.checkbox("Remember this key on this computer", key="remember")
+    # unticking it deletes the saved key
+    if not st.session_state.remember:
+        client.forget_key()
+    elif st.session_state.api_key and st.session_state.api_key != client.saved_key():
+        client.save_key(st.session_state.api_key)
 
     st.selectbox("Model", list(MODELS), key="model")
-    if st.session_state.api_key and st.session_state.get("remember"):
+    if st.session_state.api_key and st.session_state.remember:
         st.caption("Key saved on this computer (not in the repo). Untick the box to delete it.")
     elif st.session_state.api_key:
         st.caption("Using the key you pasted. It's gone when you close the page.")

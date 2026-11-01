@@ -97,7 +97,7 @@ All the modules pass results around in the same format, defined in `results.py`.
 ## Explanations
 After a scan the app sends the findings to Anthropic and shows a short explanation and fix steps for each one under Finding details on the Results tab. They get saved with the scan, so they show up again when you open it from Saved scans.
 
-Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database below), not in the repo. Untick it to delete the file. The box doesn't show on the Render site, because a key saved there would be used by anyone who opens the link. You can also set `ANTHROPIC_API_KEY` like in Setup.
+Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database above), not in the repo. Untick it to delete the file. You can also set `ANTHROPIC_API_KEY` like in Setup.
 
 Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
 
