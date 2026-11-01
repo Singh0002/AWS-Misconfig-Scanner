@@ -4,7 +4,8 @@ app.py calls explain_scan(scan) after the rules finish. It returns one
 explanation per finding and never changes the checks, findings or severity.
 
 The key is the one pasted in Settings, or else the ANTHROPIC_API_KEY
-environment variable, so it never goes in the repo. If there's no key, the
+environment variable, so it never goes in the repo. "Remember this key"
+saves it in api_key.txt next to the database. If there's no key, the
 request fails, or it takes longer than 30 seconds, those findings are just
 marked unavailable.
 """
@@ -18,6 +19,7 @@ import anthropic
 import results
 from ai import formatter
 from finding_details import find_check
+from storage import db
 
 # used when no model is picked in Settings. ANTHROPIC_MODEL can change it
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5")
@@ -61,6 +63,30 @@ REPLY_SCHEMA = {
     "required": ["explanations"],
     "additionalProperties": False,
 }
+
+
+def key_file():
+    # same folder as the database, so it's outside the repo
+    return db.default_db_path().parent / "api_key.txt"
+
+
+def saved_key():
+    """The key saved with "Remember this key", or "" if there isn't one."""
+    try:
+        return key_file().read_text().strip()
+    except OSError:
+        return ""
+
+
+def save_key(key):
+    key_file().parent.mkdir(parents=True, exist_ok=True)
+    key_file().write_text(key)
+    # only your user account can read it (this does nothing on Windows)
+    os.chmod(key_file(), 0o600)
+
+
+def forget_key():
+    key_file().unlink(missing_ok=True)
 
 
 def remove_secrets(value):

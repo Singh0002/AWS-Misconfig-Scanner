@@ -65,7 +65,7 @@ and this in a file called `config` in the same folder:
 region = us-east-1
 ```
 
-5. Set your Anthropic API key (only needed for AI explanations). The easy way is to paste it in Settings in the app. It's only kept while the page is open and never saved anywhere, so you paste it again next time. Or set it once like below so you don't have to. Don't put the key in the code or commit it.
+5. Set your Anthropic API key (only needed for AI explanations). The easy way is to paste it in Settings in the app. Tick "Remember this key on this computer" if you don't want to paste it every time. Or set it once like below. Don't put the key in the code or commit it.
 ```
 set ANTHROPIC_API_KEY=your-key-here           # Windows (cmd)
 $env:ANTHROPIC_API_KEY="your-key-here"        # Windows (PowerShell)
@@ -97,7 +97,7 @@ All the modules pass results around in the same format, defined in `results.py`.
 ## Explanations
 After a scan the app sends the findings to Anthropic and shows a short explanation and fix steps for each one under Finding details on the Results tab. They get saved with the scan, so they show up again when you open it from Saved scans.
 
-Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key is only kept while the page is open. You can also set `ANTHROPIC_API_KEY` like in Setup so you don't have to paste it every time.
+Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database below), not in the repo. Untick it to delete the file. The box doesn't show on the Render site, because a key saved there would be used by anyone who opens the link. You can also set `ANTHROPIC_API_KEY` like in Setup.
 
 Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
 
