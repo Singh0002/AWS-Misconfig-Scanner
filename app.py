@@ -325,10 +325,10 @@ with results_tab:
         st.caption(f"High: {high}, Medium: {medium}, Low: {low}, "
                    f"Passed: {passed}, Incomplete: {incomplete}")
 
-    # TODO (Martin): make these filters work. Disabled until then.
-    st.pills("Show", ["S3", "IAM", "High", "Medium", "Low"], selection_mode="multi",
-             default=["S3", "IAM", "High", "Medium", "Low"],
-             label_visibility="collapsed", disabled=True)
+    # service and severity filters (E-4 S-7-2). They only change what the
+    # table shows; the counts above and the report always cover every finding
+    shown = st.pills("Show", finding_details.FILTERS, selection_mode="multi",
+                     default=finding_details.FILTERS, label_visibility="collapsed", key="filters")
 
     # sort findings High -> Medium -> Low
     findings = []
@@ -337,9 +337,12 @@ with results_tab:
             for finding in scan["findings"]:
                 if finding["severity"] == severity:
                     findings.append(finding)
+        findings = finding_details.filter_findings(scan, findings, shown)
 
         if len(scan["findings"]) == 0:
             st.write("The selected checks found no issues.")
+        elif len(findings) == 0:
+            st.write("No findings match the filters.")
 
     rows = []
     for finding in findings:
