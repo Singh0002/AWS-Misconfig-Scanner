@@ -222,3 +222,6 @@ __marimo__/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# saved API key (Remember this key in Settings)
+api_key.txt

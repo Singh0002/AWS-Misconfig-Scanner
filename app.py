@@ -13,6 +13,7 @@ import streamlit as st
 import coordinator
 import finding_details
 import scan_progress
+from ai import client
 from storage import db
 
 # rule_id (what gets saved in the database) -> name shown on the page
@@ -31,6 +32,13 @@ RULES = {
         "iam_password_policy": "Weak password policy",
         "iam_unused_access_key": "Access keys unused 90+ days",
     },
+}
+
+# name in the Settings dropdown -> model ID sent to Anthropic
+MODELS = {
+    "Opus": "claude-opus-5-5",
+    "Sonnet": "claude-sonnet-5-5",
+    "Haiku": "claude-haiku-5-5",
 }
 
 LOGO = "assets/logo.png"
@@ -124,11 +132,32 @@ with settings_col.popover("Settings", width="stretch"):
     st.button("Check connection", disabled=True)
 
     st.divider()
-    st.toggle("AI explanations", value=True)
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    st.toggle("AI explanations", value=True, key="explain")
+    # load a key saved last time, only once so it doesn't undo what you type
+    if "api_key" not in st.session_state:
+        st.session_state.api_key = ""
+        st.session_state.remember = False
+        if client.saved_key():
+            st.session_state.api_key = client.saved_key()
+            st.session_state.remember = True
+    st.text_input("Anthropic API key", type="password", key="api_key")
+
+    st.checkbox("Remember this key on this computer", key="remember")
+    # unticking it deletes the saved key
+    if not st.session_state.remember:
+        client.forget_key()
+    elif st.session_state.api_key and st.session_state.api_key != client.saved_key():
+        client.save_key(st.session_state.api_key)
+
+    st.selectbox("Model", list(MODELS), key="model")
+    if st.session_state.api_key and st.session_state.remember:
+        st.caption("Key saved on this computer (not in the repo). Untick the box to delete it.")
+    elif st.session_state.api_key:
+        st.caption("Using the key you pasted. It's gone when you close the page.")
+    elif os.environ.get("ANTHROPIC_API_KEY"):
         st.caption("Anthropic API key found.")
     else:
-        st.caption("No Anthropic API key found. Set ANTHROPIC_API_KEY to turn on explanations.")
+        st.caption("No Anthropic API key. Paste one above or set ANTHROPIC_API_KEY.")
 
 scan_tab, results_tab, saved_tab = st.tabs(["Scan", "Results", "Saved scans"])
 
@@ -164,6 +193,21 @@ def run_requested_scan(bar):
         saved, error = db.save_scan(scan)
         if not saved:
             st.session_state.scan_notice = ("warning", "Scan finished but couldn't be saved: " + error["message"])
+        elif st.session_state.explain and scan["findings"]:
+            # explanations are saved on their own so a failure here can't touch the scan
+            bar.progress(1.0, text="Getting explanations for the findings...")
+            # no pasted key means explain_scan uses ANTHROPIC_API_KEY instead
+            model = MODELS[st.session_state.model]
+            scan["explanations"] = client.explain_scan(scan, st.session_state.api_key, model)
+            db.save_explanations(scan["metadata"]["scan_id"], scan["explanations"])
+            missing = 0
+            for explanation in scan["explanations"]:
+                if explanation["explanation_status"] == "unavailable":
+                    missing += 1
+            if missing > 0:
+                st.session_state.scan_notice = (
+                    "warning", "Scan finished, but " + str(missing) + " finding(s) have no explanation. "
+                    "The rule results are still correct.")
     st.session_state.scan_request = None
     st.rerun()
 

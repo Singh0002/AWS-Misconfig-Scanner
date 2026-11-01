@@ -65,7 +65,7 @@ and this in a file called `config` in the same folder:
 region = us-east-1
 ```
 
-5. Set your Anthropic API key (only needed for AI explanations). Don't put the key in the code or commit it.
+5. Set your Anthropic API key (only needed for AI explanations). The easy way is to paste it in Settings in the app. Tick "Remember this key on this computer" if you don't want to paste it every time. Or set it once like below. Don't put the key in the code or commit it.
 ```
 set ANTHROPIC_API_KEY=your-key-here           # Windows (cmd)
 $env:ANTHROPIC_API_KEY="your-key-here"        # Windows (PowerShell)
@@ -93,6 +93,18 @@ You can set `CLOUDGUARDIAN_DB` to put it somewhere else. It has scan results in 
 
 ## Results format
 All the modules pass results around in the same format, defined in `results.py`. Use its `make_check`, `make_finding`, `make_explanation` and `make_error` functions so the results can be saved straight to the database.
+
+## Explanations
+After a scan the app sends the findings to Anthropic and shows a short explanation and fix steps for each one under Finding details on the Results tab. They get saved with the scan, so they show up again when you open it from Saved scans.
+
+Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database above), not in the repo. Untick it to delete the file. You can also set `ANTHROPIC_API_KEY` like in Setup.
+
+Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
+
+Not done yet:
+- tests for the explanation code
+- the password policy and unused access key rules aren't hooked up to scans yet, that's waiting on the IAM collector changes
+- the downloadable report doesn't have the explanations in it yet
 
 ## Tests
 ```
