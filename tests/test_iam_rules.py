@@ -22,6 +22,7 @@ def make_user(**changes):
         "name": "alice",
         "policies": [{"name": "ReadS3", "type": "inline", "document": doc(READ_ONLY)}],
         "mfa_devices": [MFA_DEVICE],
+        "access_keys": [],
         "errors": {},
     }
     user.update(changes)
@@ -131,16 +132,16 @@ class RootMfaTests(unittest.TestCase):
 
 
 class CheckUserTests(unittest.TestCase):
-    def test_runs_both_user_rules_by_default(self):
+    def test_runs_all_three_user_rules_by_default(self):
         found = [r["rule_id"] for r in iam_rules.check_user(make_user())]
-        self.assertEqual(found, ["iam_admin_wildcard", "iam_user_mfa"])
+        self.assertEqual(found, ["iam_admin_wildcard", "iam_user_mfa", "iam_unused_access_key"])
 
     def test_runs_only_selected_rules(self):
         found = [r["rule_id"] for r in iam_rules.check_user(make_user(), ["iam_user_mfa"])]
         self.assertEqual(found, ["iam_user_mfa"])
 
     def test_every_rule_has_issue_text_and_severity(self):
-        account_rules = {"iam_root_mfa", "iam_password_policy", "iam_unused_access_key"}
+        account_rules = {"iam_root_mfa", "iam_password_policy"}
         self.assertEqual(set(iam_rules.RULE_INFO), set(iam_rules.USER_RULES) | account_rules)
 
 
@@ -282,6 +283,9 @@ except ImportError:
     mock_aws = None
 
 
+PERMISSION_RULES = ["iam_admin_wildcard", "iam_user_mfa"]
+
+
 @unittest.skipIf(mock_aws is None, "moto isn't installed")
 class RealResponseShapeTests(unittest.TestCase):
     """Runs the rules on real boto3 responses from moto's fake AWS."""
@@ -295,6 +299,7 @@ class RealResponseShapeTests(unittest.TestCase):
         return {"name": name, "policies": policies, "errors": {},
                 "mfa_devices": iam.list_mfa_devices(UserName=name)["MFADevices"]}
 
+    # this test's users have no access keys, so only the permission and MFA rules apply
     def test_bad_and_good_users(self):
         with mock_aws():
             iam = boto3.client("iam", region_name="us-east-1", aws_access_key_id="testing",
@@ -312,8 +317,8 @@ class RealResponseShapeTests(unittest.TestCase):
             iam.enable_mfa_device(UserName="good-user", SerialNumber=serial,
                                   AuthenticationCode1="123456", AuthenticationCode2="654321")
 
-            bad = iam_rules.check_user(self.collect(iam, "bad-user"))
-            good = iam_rules.check_user(self.collect(iam, "good-user"))
+            bad = iam_rules.check_user(self.collect(iam, "bad-user"), PERMISSION_RULES)
+            good = iam_rules.check_user(self.collect(iam, "good-user"), PERMISSION_RULES)
             root = iam_rules.check_root_mfa(iam.get_account_summary())
 
         self.assertEqual({r["status"] for r in bad}, {"fail"}, bad)

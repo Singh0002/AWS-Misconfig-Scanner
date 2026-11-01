@@ -1,12 +1,20 @@
 """collectors/iam.py
 
-Reads, for every IAM user: inline policies, attached managed policies, password policy, acces keys
-and MFA devices.
+Reads, for every IAM user: inline policies, attached managed policies,
+MFA devices and access keys. Also reads the account password policy once.
 Read-only calls only: list_users, list_user_policies, get_user_policy,
 list_attached_user_policies, get_policy, get_policy_version, list_mfa_devices,
-get_access_key_last_used, get_account_password_policy.
+list_access_keys, get_access_key_last_used, get_account_password_policy.
 
-Returns {"records": [...], "errors": [...]}
+Returns {"records": [...], "errors": [...], "password_policy": {...}}
+
+The password policy is for the whole account, so it's kept out of the user
+records:
+    "password_policy": {
+        "status": "available" | "missing" | "failed",
+        "value": <get_account_password_policy()["PasswordPolicy"]> or None
+    }
+"missing" means the account has no password policy at all.
 
 Record shape (one per user). Every field is always present:
     {
@@ -24,6 +32,11 @@ Record shape (one per user). Every field is always present:
             "status": ...,
             "value": {"DeviceCount": int} or None
         },
+        "access_keys": {
+            "status": ...,
+            "value": [{"AccessKeyId": <last 4 characters>, "Status": "Active" | "Inactive",
+                       "CreateDate": <datetime>, "LastUsedDate": <datetime> or None}] or None
+        },
     }
 
 What the statuses mean:
@@ -39,19 +52,13 @@ Notes for the rules:
     - If any step of reading a user's policies fails, the whole setting is
       "failed", so a half-read list can never look like a pass.
     - Policies a user inherits through groups are not collected.
+    - Field names and dates are kept as AWS returns them, because the rules
+      in detection/iam_rules.py read those names and count days between dates.
+    - Only the last 4 characters of an access key ID are kept, never the whole ID.
 
 Error shape (one per failed setting, or one if the user listing fails):
     {"operation": "<api call name>", "resource_id": "<user or None>",
      "message": "<error code only>"}
-     
-     
-*** Ignore ***    
-def read_login(iam, username):
-    status, value, code = read_setting(
-        lambda: iam.get_login_profile(UserName=username),
-        missing_codes=("NoSuchEntity",),
-    )
-    return {"status": status, "value": value, "code": code}
 """
 
 
@@ -76,11 +83,11 @@ def get_access_keys(iam, username):
             key_id = item["AccessKeyId"]
             used = iam.get_access_key_last_used(AccessKeyId=key_id)["AccessKeyLastUsed"]
             last_used = used.get("LastUsedDate")
-            access_keys.append({"accesskeyid": key_id[-4:],
-                                "status": item["Status"], 
-                                "keyused": "Used" if last_used else "Never-Used",
-                                "lastuseddate": last_used.isoformat() if last_used else None,
-                                "created": item["CreateDate"].isoformat()})
+            # AWS names and real dates, so the unused key rule can count days
+            access_keys.append({"AccessKeyId": key_id[-4:],
+                                "Status": item["Status"],
+                                "CreateDate": item["CreateDate"],
+                                "LastUsedDate": last_used})
             
     return access_keys
 
@@ -116,17 +123,10 @@ def get_inline_policies(iam,username):
     return policies
     
 def get_password_policy(iam):
-    pass_policy = iam.get_account_password_policy()["PasswordPolicy"]
-    return{"passwordlength": pass_policy.get("MinimumPasswordLength"),
-                    "requiresymbols": pass_policy.get("RequireSymbols",False),
-                    "requirenumbers": pass_policy.get("RequireNumbers",False),
-                    "requireuppercase": pass_policy.get("RequireUppercaseCharacters",False),
-                    "requirelowercase": pass_policy.get("RequireLowercaseCharacters",False),
-                    "maxage": pass_policy.get("MaxPasswordAge"),
-                    "passwordreuse": pass_policy.get("PasswordReusePrevention")
-                    }
-                    
-    
+    # kept as AWS returns it (MinimumPasswordLength, RequireSymbols, ...)
+    return iam.get_account_password_policy()["PasswordPolicy"]
+
+
 def read_password_policy(iam):
     status, value, code = read_setting(lambda: get_password_policy(iam), missing_codes=("NoSuchEntity",))
     return {"status": status, "value": value, "code": code}

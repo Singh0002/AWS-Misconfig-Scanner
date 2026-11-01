@@ -1,4 +1,4 @@
-"""Turns collector records into checks and findings (E-2 S-3-5, E-2 S-4-4, E-3 S-5-5).
+"""Turns collector records into checks and findings (E-2 S-3-5, E-2 S-4-4, E-3 S-5-5, E-3 S-6-4).
 
 The collectors and the rules use slightly different shapes, so to_bucket and
 to_user convert a collector record into what the rules expect. A setting the
@@ -49,7 +49,29 @@ def to_user(record, errors):
     else:
         # the collector only keeps a count, and the rule only checks the list isn't empty
         user["mfa_devices"] = ["device"] * record["mfa_devices"]["value"]["DeviceCount"]
+
+    # left out of the user when not collected, so the unused key rule says incomplete
+    if "access_keys" in record:
+        error = read_error(record, "access_keys", iam.SETTINGS, errors)
+        if error:
+            user["errors"]["access_keys"] = error
+        else:
+            user["access_keys"] = record["access_keys"]["value"]
     return user
+
+
+def password_policy_input(collected):
+    """The password policy and error for rule 9, from what the IAM collector returned."""
+    setting = collected.get("password_policy")
+    if setting is None:
+        return None, "not collected"
+    if setting["status"] == "failed":
+        for error in collected["errors"]:
+            if error["operation"] == "get_account_password_policy":
+                return None, error["message"]
+        return None, "unknown error"
+    # "missing" means the account has no password policy, which the rule fails
+    return setting["value"], None
 
 
 def add_results(scan, service, rule_results, rule_info):
@@ -84,6 +106,9 @@ def check_iam(scan, collected, selected_rules=None, account_summary=None, summar
     for record in collected["records"]:
         user = to_user(record, collected["errors"])
         add_results(scan, "IAM", iam_rules.check_user(user, selected_rules), iam_rules.RULE_INFO)
-    # root MFA is for the whole account, so it runs once instead of per user
+    # root MFA and the password policy are for the whole account, so they run once
     if selected_rules is None or "iam_root_mfa" in selected_rules:
         add_results(scan, "IAM", [iam_rules.check_root_mfa(account_summary, summary_error)], iam_rules.RULE_INFO)
+    if selected_rules is None or "iam_password_policy" in selected_rules:
+        policy, error = password_policy_input(collected)
+        add_results(scan, "IAM", [iam_rules.check_password_policy(policy, error)], iam_rules.RULE_INFO)
