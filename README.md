@@ -101,10 +101,11 @@ Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key
 
 Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
 
-Not done yet:
-- tests for the explanation code
-- the password policy and unused access key rules aren't hooked up to scans yet, that's waiting on the IAM collector changes
-- the downloadable report doesn't have the explanations in it yet
+## Report
+After a scan, or after opening one from Saved scans, press Download report on the Results tab. You get one HTML file with the scan details, the findings, the explanations and fix steps, and any checks that couldn't run. It opens in any browser, even offline.
+
+## Filters
+The S3, IAM, High, Medium and Low buttons above the findings table pick which findings it shows. A finding shows when both its service and its severity are picked. The counts and the downloaded report always include every finding.
 
 ## Tests
 ```
