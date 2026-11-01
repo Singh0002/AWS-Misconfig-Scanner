@@ -16,8 +16,8 @@ from botocore.exceptions import NoCredentialsError
 import coordinator
 import results
 import scan_progress
-from fakes import FakeAWS, FakeSession, bad_bucket, bad_user
-from test_connection import check_aws_credentials
+from fakes import DUMMY_SECRET, FakeAWS, FakeSession, bad_bucket, bad_user, sample_scan
+from test_connection import check_ai_key, check_aws_credentials, check_iam_access, check_s3_access, run_all
 
 APP = os.path.join(os.path.dirname(__file__), "..", "app.py")
 
@@ -75,6 +75,76 @@ class CoordinatorTests(unittest.TestCase):
     def test_second_scan_is_blocked_while_one_is_running(self):
         self.assertFalse(scan_progress.can_start(scan_progress.start()))
         self.assertTrue(scan_progress.can_start(scan_progress.idle()))
+
+
+class SetupCheckTests(unittest.TestCase):
+    """test_connection.py (SCAN-6, NFR-SEC-4): clear setup messages that never show a key.
+
+    FakeAWS puts DUMMY_SECRET in every AWS error message, so these fail if a
+    message ever passes AWS's text through to the user.
+    """
+
+    def check(self, check_function, error_code):
+        aws = FakeAWS(fail={"get_caller_identity": error_code, "list_buckets": error_code,
+                            "list_users": error_code})
+        ok, message = check_function(FakeSession(aws))
+        self.assertFalse(ok)
+        self.assertNotIn(DUMMY_SECRET, message)
+        return message
+
+    def test_working_credentials_show_only_the_account_id(self):
+        ok, message = check_aws_credentials(FakeSession(FakeAWS()))
+        self.assertTrue(ok)
+        self.assertIn("123456789012", message)
+
+    def test_expired_or_wrong_credentials(self):
+        for code in ["ExpiredToken", "InvalidClientTokenId", "SignatureDoesNotMatch"]:
+            with self.subTest(code):
+                self.assertIn("rejected the credentials", self.check(check_aws_credentials, code))
+
+    def test_denied_s3_and_iam_access(self):
+        self.assertIn("Access denied", self.check(check_s3_access, "AccessDenied"))
+        self.assertIn("Access denied", self.check(check_iam_access, "AccessDenied"))
+
+    def test_working_s3_and_iam_access(self):
+        aws = FakeAWS(buckets=[bad_bucket("b1")], users=[bad_user("u1")])
+        self.assertEqual(check_s3_access(FakeSession(aws)), (True, "S3 read access works (1 bucket(s))."))
+        self.assertTrue(check_iam_access(FakeSession(aws))[0])
+
+    def test_failed_credentials_skip_the_s3_and_iam_checks(self):
+        aws = FakeAWS(fail={"get_caller_identity": "ExpiredToken"})
+        with mock.patch("test_connection.make_session", return_value=FakeSession(aws)):
+            names = [name for name, ok, message in run_all()]
+        self.assertEqual(names, ["AWS credentials", "AI key"])
+        self.assertNotIn("list_buckets", aws.calls)
+
+    def test_no_ai_key(self):
+        with mock.patch.dict(os.environ, {}, clear=True):
+            ok, message = check_ai_key()
+        self.assertFalse(ok)
+        self.assertIn("ANTHROPIC_API_KEY", message)
+
+    def test_ai_key_set_without_a_request_never_calls_the_api(self):
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test-not-real"}, clear=True):
+            with mock.patch("anthropic.Anthropic") as client:
+                ok, message = check_ai_key(make_request=False)
+        self.assertTrue(ok)
+        client.assert_not_called()
+        self.assertNotIn("sk-ant-test-not-real", message)
+
+    def test_rejected_ai_key_message_never_shows_the_key(self):
+        import anthropic
+        import httpx2
+
+        response = httpx2.Response(401, request=httpx2.Request("POST", "https://api.anthropic.com/v1/messages"))
+        error = anthropic.AuthenticationError("bad key sk-ant-test-not-real", response=response, body=None)
+        with mock.patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-ant-test-not-real"}, clear=True):
+            with mock.patch("anthropic.Anthropic") as client:
+                client.return_value.messages.create.side_effect = error
+                ok, message = check_ai_key(make_request=True)
+        self.assertFalse(ok)
+        self.assertIn("rejected", message)
+        self.assertNotIn("sk-ant-test-not-real", message)
 
 
 class ScanPageTests(unittest.TestCase):
@@ -150,6 +220,83 @@ class ScanPageTests(unittest.TestCase):
         self.assertIn("NoCredentialsError", self.at.error[0].value)
         self.assertIn("Nothing in AWS was changed", self.at.error[0].value)
         self.assertFalse(self.start_button().disabled)
+
+
+def mixed_scan():
+    """sample_scan() plus a Medium S3 finding, so there's something to filter."""
+    scan = sample_scan()
+    check = results.make_check(scan["metadata"]["scan_id"], "S3", "old-bucket", "s3_versioning", "fail",
+                               {"versioning_status": "Suspended"})
+    scan["checks"].append(check)
+    scan["findings"].append(results.make_finding(check, "Versioning is not enabled", "Medium"))
+    return scan
+
+
+class ResultsPageTests(unittest.TestCase):
+    """The Results tab in the real app (FR-UI-2): filters and the finding details panel."""
+
+    def setUp(self):
+        import streamlit as st
+        from streamlit.testing.v1 import AppTest
+
+        st.cache_resource.clear()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.env = mock.patch.dict(os.environ, {"CLOUDGUARDIAN_DB": os.path.join(self.tmp.name, "test.db")})
+        self.env.start()
+        self.at = AppTest.from_file(APP, default_timeout=30)
+        self.at.session_state.scan = mixed_scan()
+
+    def tearDown(self):
+        self.env.stop()
+        self.tmp.cleanup()
+
+    def table(self):
+        for frame in self.at.dataframe:
+            if list(frame.value.columns) == ["Severity", "Service", "Resource", "Issue"]:
+                return frame.value
+
+    def page_text(self):
+        return "\n".join([m.value for m in self.at.markdown] + [t.value for t in self.at.text]
+                         + [i.value for i in self.at.info] + [c.value for c in self.at.caption])
+
+    def test_findings_show_most_severe_first(self):
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        self.assertEqual(list(self.table()["Severity"]), ["High", "High", "Medium"])
+
+    def test_service_filter(self):
+        self.at.session_state.filters = ["IAM", "High", "Medium", "Low"]
+        self.at.run()
+        self.assertEqual(list(self.table()["Resource"]), ["alice"])
+
+    def test_severity_filter_changes_the_table_but_not_the_counts(self):
+        self.at.session_state.filters = ["S3", "IAM", "Medium"]
+        self.at.run()
+        self.assertEqual(list(self.table()["Resource"]), ["old-bucket"])
+        self.assertIn("High: 2, Medium: 1, Low: 0", self.page_text())
+
+    def test_filters_that_match_nothing_say_so(self):
+        self.at.session_state.filters = ["IAM", "Low"]
+        self.at.run()
+        self.assertIn("No findings match the filters.", self.page_text())
+
+    def test_details_panel_shows_the_finding_and_its_explanation(self):
+        self.at.run()
+        picker = [s for s in self.at.selectbox if s.label == "Finding details"][0]
+        self.assertIn("public-bucket", picker.format_func(picker.value))
+        page = self.page_text()
+        self.assertIn("Bucket ACL grants access to everyone", page)
+        self.assertIn("Public grants: group All Users, permission READ", page)
+        self.assertIn("Anyone on the internet can read it.", page)
+        self.assertIn("1. Remove the All Users grant", page)
+
+    def test_details_panel_says_when_there_is_no_explanation(self):
+        scan = mixed_scan()
+        scan["explanations"] = []
+        self.at.session_state.scan = scan
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        self.assertIn("No AI explanation for this finding.", self.page_text())
 
 
 if __name__ == "__main__":

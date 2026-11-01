@@ -215,5 +215,93 @@ class FindingTests(unittest.TestCase):
         self.assertEqual(result["evidence"], {"public_grants": [{"group": "All Users", "permission": "READ"}]})
 
 
+HTTPS_STATEMENT = https_policy("b1")["Statement"][0]
+
+
+class PolicyEdgeCaseTests(unittest.TestCase):
+    """Policies that look safe but aren't, or look risky but aren't. These are
+    where a rule could quietly call an unsafe bucket or user safe."""
+
+    def status(self, rule_id, b):
+        return s3_rules.check_bucket(b, [rule_id])[0]["status"]
+
+    def test_allow_with_not_principal_means_almost_everyone(self):
+        # "everyone except this account" is still public
+        statement = {"Effect": "Allow", "NotPrincipal": {"AWS": "arn:aws:iam::111122223333:root"},
+                     "Action": "s3:GetObject", "Resource": "arn:aws:s3:::b1/*"}
+        self.assertEqual(self.status("s3_wildcard_principal", bucket(policy=with_statement(statement))), "fail")
+
+    def test_an_empty_condition_does_not_limit_anyone(self):
+        statement = dict(public_policy("b1")["Statement"][0], Condition={})
+        self.assertEqual(self.status("s3_wildcard_principal", bucket(policy=with_statement(statement))), "fail")
+
+    def test_deny_for_everyone_is_not_a_wildcard_finding(self):
+        # the HTTPS statement is a Deny with Principal "*", which protects the bucket
+        self.assertEqual(self.status("s3_wildcard_principal", bucket()), "pass")
+
+    def test_policy_given_as_a_json_string(self):
+        self.assertEqual(self.status("s3_wildcard_principal", bucket(policy=json.dumps(public_policy("b1")))), "fail")
+        self.assertEqual(self.status("s3_https_only", bucket(policy=json.dumps(https_policy("b1")))), "pass")
+
+    def test_log_delivery_group_is_not_public(self):
+        log_delivery = [{"Grantee": {"Type": "Group", "URI": "http://acs.amazonaws.com/groups/s3/LogDelivery"},
+                         "Permission": "WRITE"}]
+        self.assertEqual(self.status("s3_public_acl", bucket(acl={"Grants": log_delivery})), "pass")
+
+    def test_https_statements_that_only_partly_protect_fail(self):
+        partial = {
+            "allows instead of denies": dict(HTTPS_STATEMENT, Effect="Allow"),
+            "only blocks one action": dict(HTTPS_STATEMENT, Action="s3:PutObject"),
+            "only covers the bucket, not its files": dict(HTTPS_STATEMENT, Resource="arn:aws:s3:::b1"),
+            "blocks HTTPS instead of HTTP": dict(HTTPS_STATEMENT, Condition={"Bool": {"aws:SecureTransport": "true"}}),
+            "only applies to one account": dict(HTTPS_STATEMENT, Principal={"AWS": "arn:aws:iam::111122223333:root"}),
+        }
+        for name, statement in partial.items():
+            with self.subTest(name):
+                self.assertEqual(self.status("s3_https_only", bucket(policy=with_statement(statement))), "fail")
+
+    def test_https_condition_written_other_valid_ways_passes(self):
+        # AWS treats condition keys case-insensitively and allows BoolIfExists and a real boolean
+        statement = dict(HTTPS_STATEMENT, Condition={"BoolIfExists": {"AWS:SecureTransport": False}})
+        self.assertEqual(self.status("s3_https_only", bucket(policy=with_statement(statement))), "pass")
+
+    def test_admin_wildcard_written_other_ways(self):
+        cases = {
+            "*:* in a list fails": ({"Effect": "Allow", "Action": ["*:*"], "Resource": ["*"]}, "fail"),
+            "every action on one bucket passes": (
+                {"Effect": "Allow", "Action": "*", "Resource": "arn:aws:s3:::b1/*"}, "pass"),
+            "deny everything passes": ({"Effect": "Deny", "Action": "*", "Resource": "*"}, "pass"),
+        }
+        for name, (statement, expected) in cases.items():
+            with self.subTest(name):
+                policies = [{"name": "p", "type": "inline", "document": with_statement(statement)}]
+                result = iam_rules.check_admin_wildcard(user(policies=policies))
+                self.assertEqual(result["status"], expected)
+
+    def test_admin_policy_given_as_a_json_string(self):
+        policies = [{"name": "Admin", "type": "inline", "document": json.dumps(ADMIN_POLICY)}]
+        self.assertEqual(iam_rules.check_admin_wildcard(user(policies=policies))["status"], "fail")
+
+    def test_conditional_admin_passes_but_is_still_reported(self):
+        conditional = with_statement({"Effect": "Allow", "Action": "*", "Resource": "*",
+                                      "Condition": {"IpAddress": {"aws:SourceIp": "203.0.113.0/24"}}})
+        result = iam_rules.check_admin_wildcard(user(policies=[{"name": "OfficeAdmin", "document": conditional}]))
+        self.assertEqual(result["status"], "pass")
+        self.assertEqual(result["evidence"]["conditional_admin"][0]["policy"], "OfficeAdmin")
+
+    def test_policy_whose_text_is_missing_is_incomplete_not_passed(self):
+        policies = [{"name": "Mystery", "type": "attached", "document": None}]
+        self.assertEqual(iam_rules.check_admin_wildcard(user(policies=policies))["status"], "incomplete")
+
+    def test_root_summary_without_the_mfa_value_is_incomplete(self):
+        self.assertEqual(iam_rules.check_root_mfa({"SummaryMap": {}})["status"], "incomplete")
+
+    def test_stale_key_evidence_shows_only_the_last_4_characters(self):
+        key = access_key(last_used=200)
+        result = iam_rules.check_unused_access_keys(user(access_keys=[key]))
+        self.assertEqual(result["evidence"]["stale_keys"][0]["key_ending"], key["AccessKeyId"][-4:])
+        self.assertNotIn(key["AccessKeyId"], json.dumps(result, default=str))
+
+
 if __name__ == "__main__":
     unittest.main()

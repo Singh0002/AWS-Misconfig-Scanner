@@ -72,5 +72,47 @@ class ReportSafetyTests(unittest.TestCase):
             self.assertNotIn(key["AccessKeyId"], report)
 
 
+class DownloadButtonTests(unittest.TestCase):
+    """The Download report button on the Results tab (FR-REP-1)."""
+
+    def setUp(self):
+        from unittest import mock
+
+        import streamlit as st
+        from streamlit.testing.v1 import AppTest
+
+        st.cache_resource.clear()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.env = mock.patch.dict(os.environ, {"CLOUDGUARDIAN_DB": os.path.join(self.tmp.name, "test.db")})
+        self.env.start()
+        self.at = AppTest.from_file(os.path.join(os.path.dirname(__file__), "..", "app.py"),
+                                    default_timeout=30)
+
+    def tearDown(self):
+        self.env.stop()
+        self.tmp.cleanup()
+
+    def button(self):
+        return [b for b in self.at.get("download_button") if b.proto.label == "Download report"][0]
+
+    def test_button_gives_an_html_file_when_a_scan_is_open(self):
+        self.at.session_state.scan = sample_scan()
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        self.assertFalse(self.button().proto.disabled)
+        self.assertTrue(self.button().proto.url.endswith(".html"))
+
+    def test_button_is_off_with_no_scan(self):
+        self.at.run()
+        self.assertTrue(self.button().proto.disabled)
+
+    def test_file_name_has_the_scan_time(self):
+        from report.html_report import report_file_name
+
+        scan = sample_scan()
+        scan["metadata"]["scan_time"] = "2026-11-01T14:30:00+00:00"
+        self.assertEqual(report_file_name(scan), "cloudguardian-report-2026-11-01-1430.html")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -141,6 +141,15 @@ class FakeAWS:
             return [{"AccessKeyMetadata": page} for page in self.pages(name, keys, user_name)]
         raise AssertionError("No fake paginator for " + name)
 
+    # the setup checks in test_connection.py call these directly, not through a paginator
+    def list_buckets(self):
+        self.call("list_buckets")
+        return {"Buckets": [{"Name": n} for n in self.buckets]}
+
+    def list_users(self, MaxItems=None):
+        self.call("list_users")
+        return {"Users": [{"UserName": n} for n in list(self.users)[:MaxItems]]}
+
     # sts
     def get_caller_identity(self):
         self.call("get_caller_identity")
