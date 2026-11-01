@@ -132,5 +132,109 @@ class ResultsTabTests(unittest.TestCase):
         self.assertEqual([s for s in self.at.selectbox if s.label == "Finding details"], [])
 
 
+def mixed_scan():
+    """Sample results (E-4 S-7-5): findings in both services and all three severities."""
+    scan = results.new_scan(["S3", "IAM"], "123456789012")
+    scan_id = scan["metadata"]["scan_id"]
+    cases = [("S3", "public-bucket", "s3_public_acl", "Bucket ACL grants access to everyone", "High"),
+             ("S3", "old-bucket", "s3_versioning", "Versioning is not enabled", "Medium"),
+             ("IAM", "admin-user", "iam_admin_wildcard", "Policy allows every action on every resource", "High"),
+             ("IAM", "account", "iam_password_policy", "Account password policy is weak or missing", "Medium")]
+    for service, resource, rule_id, issue, severity in cases:
+        check = results.make_check(scan_id, service, resource, rule_id, "fail")
+        scan["checks"].append(check)
+        scan["findings"].append(results.make_finding(check, issue, severity))
+    scan["findings"].append(dict(scan["findings"][0], finding_id="low-one", severity="Low"))
+    return scan
+
+
+def resources(scan, findings):
+    return sorted(finding_details.find_check(scan, f["check_id"])["resource_id"] for f in findings)
+
+
+class FilterTests(unittest.TestCase):
+    def test_everything_picked_shows_everything(self):
+        scan = mixed_scan()
+        kept = finding_details.filter_findings(scan, scan["findings"], finding_details.FILTERS)
+        self.assertEqual(len(kept), 5)
+
+    def test_service_filter(self):
+        scan = mixed_scan()
+        kept = finding_details.filter_findings(scan, scan["findings"], ["IAM", "High", "Medium", "Low"])
+        self.assertEqual(resources(scan, kept), ["account", "admin-user"])
+
+    def test_severity_filter(self):
+        scan = mixed_scan()
+        kept = finding_details.filter_findings(scan, scan["findings"], ["S3", "IAM", "High"])
+        self.assertEqual(resources(scan, kept), ["admin-user", "public-bucket"])
+
+    def test_service_and_severity_together(self):
+        scan = mixed_scan()
+        kept = finding_details.filter_findings(scan, scan["findings"], ["S3", "Medium"])
+        self.assertEqual(resources(scan, kept), ["old-bucket"])
+
+    def test_nothing_picked_shows_nothing(self):
+        scan = mixed_scan()
+        self.assertEqual(finding_details.filter_findings(scan, scan["findings"], []), [])
+
+    def test_not_set_yet_shows_everything(self):
+        scan = mixed_scan()
+        self.assertEqual(len(finding_details.filter_findings(scan, scan["findings"], None)), 5)
+
+    def test_order_is_kept(self):
+        scan = mixed_scan()
+        kept = finding_details.filter_findings(scan, scan["findings"], finding_details.FILTERS)
+        self.assertEqual([f["finding_id"] for f in kept], [f["finding_id"] for f in scan["findings"]])
+
+
+class ResultsPageWithSampleScanTests(unittest.TestCase):
+    """E-4 S-7-5: the real Results tab with sample results loaded."""
+
+    def setUp(self):
+        from streamlit.testing.v1 import AppTest
+
+        self.tmp = tempfile.TemporaryDirectory()
+        os.environ["CLOUDGUARDIAN_DB"] = os.path.join(self.tmp.name, "test.db")
+        self.at = AppTest.from_file(os.path.join(os.path.dirname(__file__), "..", "app.py"),
+                                    default_timeout=20)
+        self.at.session_state.scan = mixed_scan()
+
+    def tearDown(self):
+        os.environ.pop("CLOUDGUARDIAN_DB", None)
+        self.tmp.cleanup()
+
+    def findings_table(self):
+        for table in self.at.dataframe:
+            if list(table.value.columns) == ["Severity", "Service", "Resource", "Issue"]:
+                return table.value
+        return None
+
+    def test_table_lists_findings_most_severe_first(self):
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        table = self.findings_table()
+        self.assertEqual(len(table), 5)
+        self.assertEqual(list(table["Severity"]), ["High", "High", "Medium", "Medium", "Low"])
+
+    def test_counts_cover_every_finding(self):
+        self.at.run()
+        captions = " ".join(c.value for c in self.at.caption)
+        self.assertIn("High: 2, Medium: 2, Low: 1", captions)
+
+    def test_filters_change_the_table_not_the_counts(self):
+        self.at.session_state.filters = ["S3", "High", "Medium", "Low"]
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        self.assertEqual(set(self.findings_table()["Service"]), {"S3"})
+        captions = " ".join(c.value for c in self.at.caption)
+        self.assertIn("High: 2, Medium: 2, Low: 1", captions)
+
+    def test_filters_that_match_nothing_say_so(self):
+        self.at.session_state.filters = ["IAM", "Low"]
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        self.assertIn("No findings match the filters.", [m.value for m in self.at.markdown])
+
+
 if __name__ == "__main__":
     unittest.main()

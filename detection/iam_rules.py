@@ -27,8 +27,8 @@ Two rules are for the whole account instead of one user:
     - password policy takes get_account_password_policy()["PasswordPolicy"],
       or None if the account has no password policy
 
-The unused access key rule isn't in check_user yet, because the collector
-doesn't pass access keys through findings.py until E-3 S-6-4.
+check_user runs the three per-user rules: admin wildcard, user MFA and
+unused access keys.
 """
 
 from datetime import datetime, timezone
@@ -210,6 +210,7 @@ def check_unused_access_keys(user, now=None):
 USER_RULES = {
     "iam_admin_wildcard": check_admin_wildcard,
     "iam_user_mfa": check_user_mfa,
+    "iam_unused_access_key": check_unused_access_keys,
 }
 
 

@@ -29,6 +29,27 @@ def find_check(scan, check_id):
     return None
 
 
+SERVICE_FILTERS = ["S3", "IAM"]
+SEVERITY_FILTERS = ["High", "Medium", "Low"]
+FILTERS = SERVICE_FILTERS + SEVERITY_FILTERS
+
+
+def filter_findings(scan, findings, shown):
+    """The findings whose service AND severity are both picked in the filters (E-4 S-7-2).
+
+    shown is the list of picked filter names, e.g. ["S3", "High", "Medium"].
+    None (nothing set yet) shows everything.
+    """
+    if shown is None:
+        return list(findings)
+    kept = []
+    for finding in findings:
+        check = find_check(scan, finding["check_id"]) or {}
+        if check.get("service") in shown and finding["severity"] in shown:
+            kept.append(finding)
+    return kept
+
+
 def find_explanation(scan, finding_id):
     for explanation in scan.get("explanations", []):
         if explanation["finding_id"] == finding_id:

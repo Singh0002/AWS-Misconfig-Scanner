@@ -14,6 +14,7 @@ import coordinator
 import finding_details
 import scan_progress
 from ai import client
+from report import html_report
 from storage import db
 
 # rule_id (what gets saved in the database) -> name shown on the page
@@ -324,10 +325,10 @@ with results_tab:
         st.caption(f"High: {high}, Medium: {medium}, Low: {low}, "
                    f"Passed: {passed}, Incomplete: {incomplete}")
 
-    # TODO (Martin): make these filters work. Disabled until then.
-    st.pills("Show", ["S3", "IAM", "High", "Medium", "Low"], selection_mode="multi",
-             default=["S3", "IAM", "High", "Medium", "Low"],
-             label_visibility="collapsed", disabled=True)
+    # service and severity filters (E-4 S-7-2). They only change what the
+    # table shows; the counts above and the report always cover every finding
+    shown = st.pills("Show", finding_details.FILTERS, selection_mode="multi",
+                     default=finding_details.FILTERS, label_visibility="collapsed", key="filters")
 
     # sort findings High -> Medium -> Low
     findings = []
@@ -336,9 +337,12 @@ with results_tab:
             for finding in scan["findings"]:
                 if finding["severity"] == severity:
                     findings.append(finding)
+        findings = finding_details.filter_findings(scan, findings, shown)
 
         if len(scan["findings"]) == 0:
             st.write("The selected checks found no issues.")
+        elif len(findings) == 0:
+            st.write("No findings match the filters.")
 
     rows = []
     for finding in findings:
@@ -386,6 +390,10 @@ with results_tab:
         if len(error_rows) > 0:
             st.dataframe(pd.DataFrame(error_rows), hide_index=True, width="stretch")
 
-    # TODO: report download (Sprint 3)
-    st.download_button("Download report", data="", file_name="cloudguardian-report.html",
-                       disabled=True)
+    # the report for whatever scan is open, new or saved (E-4 S-10)
+    if scan is None:
+        st.download_button("Download report", data="", file_name="cloudguardian-report.html",
+                           disabled=True)
+    else:
+        st.download_button("Download report", data=html_report.build_report(scan),
+                           file_name=html_report.report_file_name(scan), mime="text/html")

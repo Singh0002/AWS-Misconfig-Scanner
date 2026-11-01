@@ -7,7 +7,7 @@ Maps each requirement to the automated tests that check it. All tests are in
 python -m unittest discover tests
 ```
 
-Status as of 10/31/2026: **174 tests, all passing** (1 skipped when `moto` isn't installed).
+Status as of 11/1/2026: **231 tests, all passing** (a few skip themselves when an optional tool like `moto` is missing, or when a case no longer applies).
 
 The requirement IDs come from the requirement list in our Agile planning document.
 Check each ID against the final SRS before submitting.
@@ -24,8 +24,9 @@ Check each ID against the final SRS before submitting.
 | FR-IAM-1, FR-DET-2, DOM-4 | Flag policies that allow every action on every resource, considering conditions | test_iam_rules.AdminWildcardTests, test_findings.IamTests | 12 + 4 | Pass |
 | FR-IAM-1, FR-DET-2, DOM-4 | Flag IAM users without MFA | test_iam_rules.UserMfaTests, test_findings.IamTests | 4 + 4 | Pass |
 | FR-IAM-1, FR-DET-2, DOM-4 | Flag a root account without MFA | test_iam_rules.RootMfaTests, test_findings.IamTests | 4 + 4 | Pass |
-| FR-IAM-1, FR-DET-2, DOM-4 | Flag a weak or missing password policy (13 vs 14 characters, each character type) | test_iam_rules.PasswordPolicyTests | 9 | Pass |
-| FR-IAM-1, FR-DET-2, DOM-4 | Flag active keys unused for more than 90 days (89, 90 and 91 days; never-used keys) | test_iam_rules.UnusedAccessKeyTests | 12 | Pass |
+| FR-IAM-1, FR-DET-2, DOM-4 | Flag a weak or missing password policy (13 vs 14 characters, each character type) | test_iam_rules.PasswordPolicyTests, test_iam.FullScanTests | 9 + 2 | Pass |
+| FR-IAM-1, FR-DET-2, DOM-4 | Flag active keys unused for more than 90 days (89, 90 and 91 days; never-used keys) | test_iam_rules.UnusedAccessKeyTests, test_iam.FullScanTests | 12 + 2 | Pass |
+| SCAN-5, FR-IAM-1 | The IAM collector's records work with every IAM rule in a full scan; key IDs cut to the last 4 characters | test_iam.CollectorShapeTests, test_iam.FullScanTests | 4 + 7 | Pass |
 | SCAN-4, SCAN-5, FR-S3-1, DOM-3 | Rules read the same data shapes real AWS returns | test_s3_rules.RealResponseShapeTests, test_iam_rules.RealResponseShapeTests | 2 | Pass |
 | FR-DET-3, DETECT-3 to DETECT-7 | One shared result format with pass, fail and incomplete statuses and stable finding IDs | test_results.ResultFormatTests, test_findings.FindingsTests | 7 + 5 | Pass |
 | NFR-SAFE-3, OUT-6 | Settings that can't be read are incomplete, never passed | the unreadable/not-collected tests in every rule class, test_findings.FindingsTests | 20+ | Pass |
@@ -33,7 +34,10 @@ Check each ID against the final SRS before submitting.
 | SCAN-6, NFR-SEC-4, OUT-7 | Clear setup errors for missing, invalid or denied credentials, with no keys shown | test_setup_checks.TestAwsChecks, test_setup_checks.TestAiKeyCheck | 8 + 3 | Pass |
 | FR-UI-1 | Progress bar, and only one scan at a time | test_scan_progress.TestProgressState, test_scan_progress.TestScanTab | 9 + 5 | Pass |
 | FR-UI-2, OUT-2 to OUT-5, AI-5, AI-6 | Finding details and the AI explanation, with a clear message when the AI is missing or failed | test_finding_details.DetailsTests, ExplanationTests, ResultsTabTests | 4 + 6 + 3 | Pass |
+| FR-UI-2 | Service and severity filters; the Results tab with sample results | test_finding_details.FilterTests, ResultsPageWithSampleScanTests | 7 + 4 | Pass |
+| AI-1 to AI-6, FR-AI-1, FR-AI-2, NFR-SEC-1 | AI explanations: malformed, missing and failed replies are unavailable and never change a finding; no credentials, account ID or whole key IDs are sent | test_ai (all classes) | 21 | Pass |
 | OUT-1, FR-REP-1 | Report shows the scan details and findings, most severe first | test_html_report.ScanDetailsTests, test_html_report.FindingsTests | 4 + 4 | Pass |
+| OUT-1, FR-REP-1 | Report includes the explanations and incomplete checks; downloads for the open scan, new or saved | test_html_report.ExplanationsSectionTests, IncompleteSectionTests, FullReportTests, SavedScanReportTests, DownloadButtonTests | 5 + 3 + 3 + 1 + 2 | Pass |
 | NFR-SEC-1, FR-REP-1 | Text from AWS, the AI or the database can't add HTML to the report | test_html_report.EscapeTests, test_html_report.ReportEscapingTests | 3 + 3 | Pass |
 | OUT-1 (course database outline) | Save, reopen, list and delete scans; a failed save saves nothing | test_storage.StorageSchemaTests, test_storage.SaveLoadTests | 6 + 9 | Pass |
 
@@ -41,8 +45,6 @@ Check each ID against the final SRS before submitting.
 
 | Requirement IDs | Requirement | Planned test | Owner | Sprint |
 |---|---|---|---|---|
-| AI-1 to AI-4, FR-AI-1, NFR-SEC-1 | AI client: timeout, limited retries, no credentials sent | Malformed, missing and failed AI responses (E-4 S-9-5) | Zach, Martin | 3 → 4 |
-| FR-REP-1 | Downloading the report for current and saved scans | E-4 S-10-5 | Martin | 3 → 4 |
 | NFR-SEC-1 to NFR-SEC-3 | No secrets in saved scans, logs, the UI or the AI request | E-5 S-8-5, E-6 S-11 credential-leak sweep | Martin, Zach | 4 |
 | NFR-SAFE-1 | Every AWS call is read-only | Review of every Boto3 call (E-6 S-11) | Martin | 4 |
 | NFR-PERF-1 | A scan of 10 buckets and 10 users finishes within 5 minutes | Timing on the test account (E-6 S-13) | Martin | 4 |
