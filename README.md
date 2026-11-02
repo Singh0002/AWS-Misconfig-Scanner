@@ -111,6 +111,7 @@ The S3, IAM, High, Medium and Low buttons above the findings table pick which fi
 ```
 python -m unittest discover tests
 ```
+The tests in `test_live.py` use the real AWS test account and the Anthropic API, so they're skipped unless you set `CLOUDGUARDIAN_LIVE=1` first.
 
 ## Project Scope
 
