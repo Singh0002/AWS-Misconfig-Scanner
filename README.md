@@ -114,5 +114,15 @@ python -m unittest discover tests
 The tests in `test_live.py` use the real AWS test account and the Anthropic API, so they're skipped unless you set `CLOUDGUARDIAN_LIVE=1` first.
 
 ## Project Scope
+## Project Scope
+CloudGuardian checks one AWS account at a time for 10 common S3 and IAM misconfigurations:
+- S3: public ACL grants, Block Public Access off, wildcard principal, versioning disabled, HTTPS not enforced
+- IAM: admin wildcards, users without MFA, root without MFA, weak password policy, access keys unused 90+ days
+It only reads settings and never changes anything in the account. It runs on your own computer and isn't hosted online.
+Not included: other AWS services (like EC2 or RDS), more than one account at a time, and fixing problems automatically. The AI suggests fixes, but you make the changes yourself.
 
 ## Team
+## Team
+- Ajay Singh: project manager
+- Martin Perez
+- Zach Kidwell
