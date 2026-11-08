@@ -65,7 +65,7 @@ and this in a file called `config` in the same folder:
 region = us-east-1
 ```
 
-5. Set your Anthropic API key (only needed for AI explanations). The easy way is to paste it in Settings in the app. Tick "Remember this key on this computer" if you don't want to paste it every time. Or set it once like below. Don't put the key in the code or commit it.
+5. Set your Anthropic API key (only needed for AI explanations). The easy way is to paste it on the Settings tab in the app. Tick "Remember this key on this computer" if you don't want to paste it every time. Or set it once like below. Don't put the key in the code or commit it.
 ```
 set ANTHROPIC_API_KEY=your-key-here           # Windows (cmd)
 $env:ANTHROPIC_API_KEY="your-key-here"        # Windows (PowerShell)
@@ -82,7 +82,7 @@ python test_connection.py --ai-call
 ```
 streamlit run app.py
 ```
-It opens at http://localhost:8501. Pick the services and rules and press Start scan. Finished scans save automatically and show up in Saved scans. Don't use the VS Code run button, it runs plain python and nothing will open. Press Ctrl+C in the terminal to stop it.
+It opens at http://localhost:8501. Pick S3, IAM or both and press Start scan. To run only some of the 10 checks, open "Choose specific checks". Finished scans save automatically and show up in Saved scans. On the Settings tab, Check connection tests your AWS credentials and S3 and IAM read access. Don't use the VS Code run button, it runs plain python and nothing will open. Press Ctrl+C in the terminal to stop it.
 
 ## Database
 Saved scans go in a local SQLite file called `cloudguardian.db`. The app makes it and its tables the first time it runs.
@@ -95,9 +95,9 @@ You can set `CLOUDGUARDIAN_DB` to put it somewhere else. It has scan results in 
 All the modules pass results around in the same format, defined in `results.py`. Use its `make_check`, `make_finding`, `make_explanation` and `make_error` functions so the results can be saved straight to the database.
 
 ## Explanations
-After a scan the app sends the findings to Anthropic and shows a short explanation and fix steps for each one under Finding details on the Results tab. They get saved with the scan, so they show up again when you open it from Saved scans.
+After a scan the app sends the findings to Anthropic and shows a short explanation and fix steps for each one on the Results tab. Click a finding to open it. They get saved with the scan, so they show up again when you open it from Saved scans.
 
-Paste your API key and pick a model (Opus, Sonnet or Haiku) in Settings. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database above), not in the repo. Untick it to delete the file. You can also set `ANTHROPIC_API_KEY` like in Setup.
+Paste your API key and pick a model (Opus, Sonnet or Haiku) on the Settings tab. The AI explanations switch is on the Scan tab. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database above), not in the repo. Untick it to delete the file. You can also set `ANTHROPIC_API_KEY` like in Setup.
 
 Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
 
@@ -105,7 +105,7 @@ Only the finding info gets sent, and anything that looks like a secret or an acc
 After a scan, or after opening one from Saved scans, press Download report on the Results tab. You get one HTML file with the scan details, the findings, the explanations and fix steps, and any checks that couldn't run. It opens in any browser, even offline.
 
 ## Filters
-The S3, IAM, High, Medium and Low buttons above the findings table pick which findings it shows. A finding shows when both its service and its severity are picked. The counts and the downloaded report always include every finding.
+The S3, IAM, High, Medium and Low buttons above the findings pick which ones are listed. A finding shows when both its service and its severity are picked. The counts at the top and the downloaded report always include every finding.
 
 ## Tests
 ```

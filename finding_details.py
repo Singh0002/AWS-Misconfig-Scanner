@@ -64,6 +64,21 @@ def label(scan, finding):
                        check.get("resource_id", "?"), finding["issue"]])
 
 
+SEVERITY_COLORS = {"High": "red", "Medium": "orange", "Low": "blue"}
+
+
+def title(scan, finding):
+    """The heading of a finding on the Results tab, e.g.
+    ":red-badge[High] **Versioning is not enabled** · `my-bucket` · S3"
+
+    The resource goes in backticks so a name like my_user can't turn into italics.
+    """
+    check = find_check(scan, finding["check_id"]) or {}
+    color = SEVERITY_COLORS.get(finding["severity"], "gray")
+    return (":" + color + "-badge[" + finding["severity"] + "] **" + finding["issue"] + "** · `"
+            + str(check.get("resource_id", "?")) + "` · " + str(check.get("service", "?")))
+
+
 def describe(value):
     """Turns evidence values into plain words, e.g. {"group": "All Users"} -> "group All Users"."""
     if isinstance(value, bool):

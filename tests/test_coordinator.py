@@ -16,7 +16,7 @@ from botocore.exceptions import NoCredentialsError
 import coordinator
 import results
 import scan_progress
-from fakes import DUMMY_SECRET, FakeAWS, FakeSession, bad_bucket, bad_user, sample_scan
+from fakes import ACCOUNT_ID, DUMMY_SECRET, FakeAWS, FakeSession, bad_bucket, bad_user, sample_scan
 from test_connection import check_ai_key, check_aws_credentials, check_iam_access, check_s3_access, run_all
 
 APP = os.path.join(os.path.dirname(__file__), "..", "app.py")
@@ -222,6 +222,52 @@ class ScanPageTests(unittest.TestCase):
         self.assertFalse(self.start_button().disabled)
 
 
+class SettingsPageTests(unittest.TestCase):
+    """The Check connection button on the Settings tab (SCAN-6, NFR-SEC-4)."""
+
+    def setUp(self):
+        import streamlit as st
+        from streamlit.testing.v1 import AppTest
+
+        st.cache_resource.clear()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.env = mock.patch.dict(os.environ, {"CLOUDGUARDIAN_DB": os.path.join(self.tmp.name, "test.db")})
+        self.env.start()
+        self.at = AppTest.from_file(APP, default_timeout=30)
+
+    def tearDown(self):
+        self.env.stop()
+        self.tmp.cleanup()
+
+    def click_check(self, aws):
+        with mock.patch.object(coordinator, "make_session", return_value=FakeSession(aws)):
+            self.at.run()
+            [b for b in self.at.button if b.label == "Check connection"][0].click().run()
+
+    def header(self):
+        return "\n".join(m.value for m in self.at.markdown)
+
+    def test_working_connection_shows_each_check_and_the_short_account(self):
+        aws = FakeAWS(buckets=[bad_bucket("b1")])
+        self.click_check(aws)
+        messages = [s.value for s in self.at.success]
+        self.assertEqual(len(messages), 3)
+        self.assertIn("S3 read access works", messages[1])
+        self.assertIn("IAM read access works", messages[2])
+        # the account number is shortened everywhere on the page
+        self.assertIn("AWS ••••" + ACCOUNT_ID[-4:], self.header())
+        self.assertNotIn(ACCOUNT_ID, self.header() + "\n".join(messages))
+        # only read calls were made
+        for call in aws.calls:
+            self.assertTrue(call.startswith(("get_", "list_")), call)
+
+    def test_missing_credentials_say_what_to_fix_without_any_key(self):
+        self.click_check(FakeAWS(fail={"get_caller_identity": NoCredentialsError()}))
+        self.assertIn("No AWS credentials found", self.at.error[0].value)
+        self.assertIn("AWS not connected", self.header())
+        self.assertNotIn(DUMMY_SECRET, self.header() + self.at.error[0].value)
+
+
 def mixed_scan():
     """sample_scan() plus a Medium S3 finding, so there's something to filter."""
     scan = sample_scan()
@@ -250,30 +296,40 @@ class ResultsPageTests(unittest.TestCase):
         self.env.stop()
         self.tmp.cleanup()
 
-    def table(self):
-        for frame in self.at.dataframe:
-            if list(frame.value.columns) == ["Severity", "Service", "Resource", "Issue"]:
-                return frame.value
+    def shown(self):
+        """(severity, resource) for each finding listed, from the headings that open them."""
+        listed = []
+        for section in self.at.expander:
+            if "-badge[" in section.label:
+                severity = section.label.split("-badge[")[1].split("]")[0]
+                resource = section.label.split("`")[1]
+                listed.append((severity, resource))
+        return listed
+
+    def counts(self):
+        return {m.label.split("[")[-1].rstrip("]"): m.value for m in self.at.metric}
 
     def page_text(self):
         return "\n".join([m.value for m in self.at.markdown] + [t.value for t in self.at.text]
-                         + [i.value for i in self.at.info] + [c.value for c in self.at.caption])
+                         + [i.value for i in self.at.info] + [c.value for c in self.at.caption]
+                         + [c.value for c in self.at.code])
 
     def test_findings_show_most_severe_first(self):
         self.at.run()
         self.assertFalse(self.at.exception)
-        self.assertEqual(list(self.table()["Severity"]), ["High", "High", "Medium"])
+        self.assertEqual([severity for severity, _ in self.shown()], ["High", "High", "Medium"])
 
     def test_service_filter(self):
         self.at.session_state.filters = ["IAM", "High", "Medium", "Low"]
         self.at.run()
-        self.assertEqual(list(self.table()["Resource"]), ["alice"])
+        self.assertEqual([resource for _, resource in self.shown()], ["alice"])
 
-    def test_severity_filter_changes_the_table_but_not_the_counts(self):
+    def test_severity_filter_changes_the_list_but_not_the_counts(self):
         self.at.session_state.filters = ["S3", "IAM", "Medium"]
         self.at.run()
-        self.assertEqual(list(self.table()["Resource"]), ["old-bucket"])
-        self.assertIn("High: 2, Medium: 1, Low: 0", self.page_text())
+        self.assertEqual([resource for _, resource in self.shown()], ["old-bucket"])
+        counts = self.counts()
+        self.assertEqual((counts["High"], counts["Medium"], counts["Low"]), ("2", "1", "0"))
 
     def test_filters_that_match_nothing_say_so(self):
         self.at.session_state.filters = ["IAM", "Low"]
@@ -282,10 +338,11 @@ class ResultsPageTests(unittest.TestCase):
 
     def test_details_panel_shows_the_finding_and_its_explanation(self):
         self.at.run()
-        picker = [s for s in self.at.selectbox if s.label == "Finding details"][0]
-        self.assertIn("public-bucket", picker.format_func(picker.value))
+        # the most severe finding is listed first and starts open
+        first = [e for e in self.at.expander if "-badge[" in e.label][0]
+        self.assertIn("public-bucket", first.label)
+        self.assertIn("Bucket ACL grants access to everyone", first.label)
         page = self.page_text()
-        self.assertIn("Bucket ACL grants access to everyone", page)
         self.assertIn("Public grants: group All Users, permission READ", page)
         self.assertIn("Anyone on the internet can read it.", page)
         self.assertIn("1. Remove the All Users grant", page)

@@ -9,7 +9,7 @@ and run with:
 python -m unittest discover tests
 ```
 
-Status as of 11/1/2026: **131 tests, all passing**. The 2 live tests in
+Status as of 11/8/2026: **133 tests, all passing**. The 2 live tests in
 `test_live.py` are skipped unless `CLOUDGUARDIAN_LIVE=1` is set, because they
 need the real AWS test account and an Anthropic key.
 
@@ -30,6 +30,7 @@ Check each ID against the final SRS before submitting.
 | SCAN-1 to SCAN-3, FR-UI-1 | S3, IAM or both; an empty selection doesn't start a scan; one scan at a time | test_coordinator.CoordinatorTests, test_coordinator.ScanPageTests | 7 + 4 | Pass |
 | SCAN-6, NFR-SEC-4, OUT-7 | Clear setup errors for missing, expired or denied credentials and the AI key, with no keys shown | test_coordinator.SetupCheckTests | 8 | Pass |
 | FR-UI-2, OUT-2 to OUT-5 | Results tab: findings most severe first, service and severity filters, finding details with the AI explanation or a clear message | test_coordinator.ResultsPageTests | 6 | Pass |
+| SCAN-6, NFR-SEC-4 | Check connection on the Settings tab: each check shown, account number shortened, only read calls, clear error with no keys | test_coordinator.SettingsPageTests | 2 | Pass |
 | AI-1 to AI-6, FR-AI-1, FR-AI-2, NFR-SEC-1 | AI explanations: only finding data is sent with secrets removed; bad, missing or failed replies are unavailable and never change a finding | test_ai (RequestTests, ReplyTests, FailedRequestTests) | 18 | Pass |
 | OUT-1 (course database outline), NFR-SEC-1 | Save, reopen, list and delete scans; a failed save rolls back; no credentials stored | test_storage.StorageTests | 14 | Pass |
 | OUT-1, FR-REP-1, NFR-SEC-1 | Report has the scan details, findings, explanations and incomplete checks; matches a reopened scan; HTML is escaped; no secrets; Download report button | test_reporting (ReportContentTests, ReportSafetyTests, DownloadButtonTests) | 10 | Pass |

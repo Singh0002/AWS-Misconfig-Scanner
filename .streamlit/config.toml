@@ -1,17 +1,20 @@
 [theme]
-base = "dark"
-backgroundColor = "#111111"
-secondaryBackgroundColor = "#1b1b1b"
-textColor = "#dcdcdc"
-primaryColor = "#4aa8bb"
-borderColor = "#2c2c2c"
-linkColor = "#6cc0d0"
-redColor = "#d0645c"
-orangeColor = "#c98f4f"
-yellowColor = "#c9ad5c"
-blueColor = "#4aa8bb"
-greenColor = "#6fa585"
-font = "sans serif"
+base = "light"
+# AWS Orange for buttons and highlights, AWS Dark Slate for text
+primaryColor = "#FF9900"
+textColor = "#252F3E"
+backgroundColor = "#F6F4F0"
+secondaryBackgroundColor = "#FFFFFF"
+borderColor = "#E4DED3"
+linkColor = "#B26A00"
+baseRadius = "large"
+font = "Plus Jakarta Sans:https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+# severity colors: red High, orange Medium, blue Low, green Passed, yellow Couldn't check
+redColor = "#C8372D"
+orangeColor = "#B26A00"
+blueColor = "#2F6FB0"
+greenColor = "#2F8A4C"
+yellowColor = "#A68A00"
 
 [client]
 toolbarMode = "minimal"
