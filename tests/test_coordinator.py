@@ -218,6 +218,7 @@ class ScanPageTests(unittest.TestCase):
             self.at.run()
             self.start_button().click().run()
         self.assertIn("NoCredentialsError", self.at.error[0].value)
+        self.assertIn("aws configure", self.at.error[0].value)
         self.assertIn("Nothing in AWS was changed", self.at.error[0].value)
         self.assertFalse(self.start_button().disabled)
 
