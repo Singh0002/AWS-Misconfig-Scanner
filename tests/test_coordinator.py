@@ -221,6 +221,32 @@ class ScanPageTests(unittest.TestCase):
         self.assertIn("Nothing in AWS was changed", self.at.error[0].value)
         self.assertFalse(self.start_button().disabled)
 
+    def open_tab(self):
+        return self.at.session_state["page_tab"]
+
+    def test_finished_scan_goes_to_the_results_tab(self):
+        self.click_start(lambda services, rules, on_progress: results.new_scan(services))
+        self.assertIn("Results", self.open_tab())
+        self.assertIn("Scan finished and saved.", [s.value for s in self.at.success])
+
+    def test_failed_scan_stays_on_the_scan_tab(self):
+        def broken_run_scan(services, rules, on_progress):
+            raise RuntimeError("boom")
+
+        self.click_start(broken_run_scan)
+        self.assertNotIn("Results", self.open_tab())
+
+    def test_opening_a_saved_scan_goes_to_the_results_tab(self):
+        # run one scan so there's something saved, then go back to Saved scans
+        self.click_start(lambda services, rules, on_progress: results.new_scan(services))
+        self.at.session_state["page_tab"] = ":material/history: Saved scans"
+        self.at.session_state.scan = None
+        self.at.run()
+        [b for b in self.at.button if b.label == "Open"][0].click().run()
+        self.assertIn("Results", self.open_tab())
+        self.assertIsNotNone(self.at.session_state.scan)
+        self.assertIn("Opened the saved scan", "\n".join(s.value for s in self.at.success))
+
 
 class SettingsPageTests(unittest.TestCase):
     """The Check connection button on the Settings tab (SCAN-6, NFR-SEC-4)."""
@@ -255,7 +281,7 @@ class SettingsPageTests(unittest.TestCase):
         self.assertIn("S3 read access works", messages[1])
         self.assertIn("IAM read access works", messages[2])
         # the account number is shortened everywhere on the page
-        self.assertIn("AWS ••••" + ACCOUNT_ID[-4:], self.header())
+        self.assertIn("AWS ..." + ACCOUNT_ID[-4:], self.header())
         self.assertNotIn(ACCOUNT_ID, self.header() + "\n".join(messages))
         # only read calls were made
         for call in aws.calls:
@@ -266,6 +292,41 @@ class SettingsPageTests(unittest.TestCase):
         self.assertIn("No AWS credentials found", self.at.error[0].value)
         self.assertIn("AWS not connected", self.header())
         self.assertNotIn(DUMMY_SECRET, self.header() + self.at.error[0].value)
+
+    def test_setup_help_and_ai_warning_are_on_the_page(self):
+        self.at.run()
+        self.assertFalse(self.at.exception)
+        text = self.header()
+        # AWS help: the read-only policy and how to add the key
+        self.assertIn("SecurityAudit", text)
+        self.assertIn("aws configure", text)
+        # AI help: where to get a key, and the warning that the AI can be wrong
+        self.assertIn("console.anthropic.com", text)
+        self.assertIn("hallucinate", text)
+
+    def test_dark_mode_and_reset_change_the_theme(self):
+        from streamlit import config
+        # the theme is shared by the whole app, so put it back after the test
+        names = ["base", "primaryColor", "backgroundColor", "textColor"]
+        before = {}
+        for name in names:
+            before[name] = config.get_option("theme." + name)
+        try:
+            self.at.run()
+            self.at.toggle(key="dark_mode").set_value(True).run()
+            self.assertEqual(config.get_option("theme.base"), "dark")
+            self.assertEqual(config.get_option("theme.backgroundColor"), "#1A1E25")
+
+            self.at.color_picker(key="accent").pick("#3B82C4").run()
+            self.assertEqual(config.get_option("theme.primaryColor"), "#3B82C4")
+
+            [b for b in self.at.button if b.label == "Reset to default colors"][0].click().run()
+            self.assertEqual(config.get_option("theme.base"), "light")
+            self.assertEqual(config.get_option("theme.primaryColor"), "#FF9900")
+            self.assertFalse(self.at.exception)
+        finally:
+            for name in names:
+                config.set_option("theme." + name, before[name])
 
 
 def mixed_scan():
