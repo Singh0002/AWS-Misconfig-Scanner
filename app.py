@@ -8,6 +8,7 @@ import json
 import os
 
 import pandas as pd
+from botocore.exceptions import BotoCoreError, ClientError
 import streamlit as st
 
 import coordinator
@@ -253,8 +254,13 @@ def run_requested_scan(bar):
     except Exception as error:
         # only the error type is shown, in case the message has account details
         st.session_state.progress = scan_progress.finish(st.session_state.progress, False)
+        # test_connection turns AWS errors into one safe sentence (no secrets in it)
+        hint = ""
+        if isinstance(error, (BotoCoreError, ClientError)):
+            hint = " " + test_connection._aws_error_message(error)
         st.session_state.scan_notice = (
-            "error", "The scan stopped (" + type(error).__name__ + "). Nothing in AWS was changed.")
+            "error", "The scan stopped (" + type(error).__name__ + ")." + hint
+            + " Nothing in AWS was changed.")
     else:
         st.session_state.progress = scan_progress.finish(st.session_state.progress, True)
         st.session_state.scan_notice = ("success", "Scan finished. See the Results tab.")
