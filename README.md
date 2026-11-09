@@ -82,7 +82,7 @@ python test_connection.py --ai-call
 ```
 streamlit run app.py
 ```
-It opens at http://localhost:8501. Pick S3, IAM or both and press Start scan. To run only some of the 10 checks, open "Choose specific checks". Finished scans save automatically and show up in Saved scans. On the Settings tab, Check connection tests your AWS credentials and S3 and IAM read access. Don't use the VS Code run button, it runs plain python and nothing will open. Press Ctrl+C in the terminal to stop it.
+It opens at http://localhost:8501. Pick S3, IAM or both and press Start scan. To run only some of the 10 checks, open "Choose specific checks". Finished scans save automatically and show up in Saved scans. When a scan finishes, or you open a saved one, it goes straight to the Results tab. On the Settings tab, Check connection tests your AWS credentials and S3 and IAM read access. If you've never set up AWS or an Anthropic key, the help buttons on the Settings tab walk you through it. Settings also has dark mode and a button color picker (these reset when the app restarts). Don't use the VS Code run button, it runs plain python and nothing will open. Press Ctrl+C in the terminal to stop it.
 
 ## Database
 Saved scans go in a local SQLite file called `cloudguardian.db`. The app makes it and its tables the first time it runs.
@@ -100,6 +100,8 @@ After a scan the app sends the findings to Anthropic and shows a short explanati
 Paste your API key and pick a model (Opus, Sonnet or Haiku) on the Settings tab. The AI explanations switch is on the Scan tab. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database above), not in the repo. Untick it to delete the file. You can also set `ANTHROPIC_API_KEY` like in Setup.
 
 Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
+
+We tested 50 explanations on findings from simple to complicated and didn't get any hallucinations, but it can still happen, so double check the fix steps before changing anything in AWS. Opus gives the best explanations, then Sonnet, then Haiku.
 
 ## Report
 After a scan, or after opening one from Saved scans, press Download report on the Results tab. You get one HTML file with the scan details, the findings, the explanations and fix steps, and any checks that couldn't run. It opens in any browser, even offline.
