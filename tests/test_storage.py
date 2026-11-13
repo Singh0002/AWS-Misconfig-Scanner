@@ -78,6 +78,29 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(loaded["explanations"], later)
         self.assertEqual(loaded["findings"], scan["findings"])
 
+    def test_errors_are_added_later_to_a_saved_scan(self):
+        # the AI runs after the scan is saved, so its errors are added afterwards (E-6 S-12-3)
+        scan = sample_scan()
+        scan_id = self.save(scan)
+        before = len(scan["errors"])
+        late = [results.make_error(scan_id, "AI", "messages.create", "APIConnectionError")]
+        ok, error = db.save_errors(scan_id, late, self.path)
+        self.assertTrue(ok, error)
+        loaded, error = db.load_scan(scan_id, self.path)
+        self.assertEqual(len(loaded["errors"]), before + 1)
+        self.assertEqual(loaded["errors"][-1]["message"], "APIConnectionError")
+        self.assertEqual(loaded["findings"], scan["findings"])
+
+    def test_errors_for_an_unknown_or_different_scan_are_refused(self):
+        scan_id = self.save(sample_scan())
+        ok, error = db.save_errors("made-up", [], self.path)
+        self.assertFalse(ok)
+        self.assertIn("not found", error["message"])
+        ok, error = db.save_errors(scan_id, [results.make_error("other-scan", "AI", "x", "y")], self.path)
+        self.assertFalse(ok)
+        loaded, error = db.load_scan(scan_id, self.path)
+        self.assertNotIn("y", [e["message"] for e in loaded["errors"]])
+
     def test_several_scans_stay_separate(self):
         first, second = sample_scan("bucket-one"), sample_scan("bucket-two")
         self.save(first)

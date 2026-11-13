@@ -14,6 +14,7 @@ import os
 import sys
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import (
     BotoCoreError,
     ClientError,
@@ -38,12 +39,21 @@ def _aws_error_message(error):
     return "Couldn't reach AWS. Check your internet connection and region."
 
 
+# Temporary AWS errors (throttling, a dropped connection) are retried a few
+# times and then given up on, so a scan can't hang (E-6 S-12-2). Each call also
+# has a time limit.
+AWS_CONFIG = Config(retries={"max_attempts": 3, "mode": "standard"},
+                    connect_timeout=10, read_timeout=30)
+
+
 def make_session(profile=None, region=None):
     # profile=None lets boto3 use the default profile or environment variables
     session = boto3.Session(profile_name=profile, region_name=region)
     if session.region_name is None:
         # S3 and IAM don't depend on region, but boto3 wants one set
         session = boto3.Session(profile_name=profile, region_name="us-east-1")
+    # every client made from this session gets the retry and timeout settings
+    session._session.set_default_client_config(AWS_CONFIG)
     return session
 
 

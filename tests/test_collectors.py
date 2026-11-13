@@ -71,6 +71,37 @@ class PagingTests(unittest.TestCase):
         self.assertEqual(len(record["access_keys"]["value"]), 2)
 
 
+class RepeatedRequestTests(unittest.TestCase):
+    """E-6 S-13-3: a scan shouldn't ask AWS for the same thing twice."""
+
+    def test_a_policy_shared_by_several_users_is_downloaded_once(self):
+        aws = FakeAWS(users=[good_user("u1"), good_user("u2"), good_user("u3")])
+        collected = collect_iam(aws)
+        self.assertEqual(aws.calls.count("get_policy"), 1)
+        self.assertEqual(aws.calls.count("get_policy_version"), 1)
+        # every user still gets the policy document
+        for record in collected["records"]:
+            self.assertEqual(record["attached_policies"]["value"][0]["name"], "ReadOnly")
+            self.assertIn("Statement", record["attached_policies"]["value"][0]["document"])
+
+    def test_a_failed_policy_download_is_tried_again_for_the_next_user(self):
+        # a failure must never be remembered as an answer
+        aws = FakeAWS(users=[good_user("u1"), good_user("u2")], fail={"get_policy_version": "Throttling"})
+        collected = collect_iam(aws)
+        self.assertEqual([r["attached_policies"]["status"] for r in collected["records"]], ["failed", "failed"])
+        self.assertEqual(aws.calls.count("get_policy_version"), 2)
+
+    def test_account_wide_settings_are_read_once_per_scan(self):
+        aws = FakeAWS(buckets=[good_bucket("b1"), good_bucket("b2")], users=[good_user("u1"), good_user("u2")])
+        coordinator.run_scan(["S3", "IAM"], None, lambda *args: None, session=FakeSession(aws))
+        for call in ["get_caller_identity", "list_buckets", "list_users", "get_account_summary",
+                     "get_account_password_policy", "get_account_public_access_block"]:
+            self.assertEqual(aws.calls.count(call), 1, call)
+        # and one read of each setting per bucket
+        for call in ["get_bucket_acl", "get_bucket_versioning", "get_bucket_policy"]:
+            self.assertEqual(aws.calls.count(call), 2, call)
+
+
 class FailedRequestTests(unittest.TestCase):
     def test_denied_throttled_and_timed_out_calls_are_failed(self):
         cases = {"denied": "AccessDenied", "throttled": "Throttling",

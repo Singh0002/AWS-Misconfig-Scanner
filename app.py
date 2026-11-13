@@ -403,8 +403,11 @@ def run_requested_scan(bar):
             bar.progress(1.0, text="Getting explanations for the findings...")
             # no pasted key means explain_scan uses ANTHROPIC_API_KEY instead
             model = MODELS[st.session_state.model]
+            errors_before = len(scan["errors"])
             scan["explanations"] = client.explain_scan(scan, st.session_state.api_key, model)
             db.save_explanations(scan["metadata"]["scan_id"], scan["explanations"])
+            # AI errors happen after the scan was saved, so they're added to it here
+            db.save_errors(scan["metadata"]["scan_id"], scan["errors"][errors_before:])
             missing = 0
             for explanation in scan["explanations"]:
                 if explanation["explanation_status"] == "unavailable":
