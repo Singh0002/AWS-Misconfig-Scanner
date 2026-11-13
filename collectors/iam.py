@@ -100,16 +100,23 @@ def get_mfa_devices(iam, username):
     
     
     
-def get_attached_policies(iam, username):
+def get_attached_policies(iam, username, documents=None):
+    """documents is a dict of policy ARN -> document that is shared by every user
+    in one scan. A managed policy attached to several users is only downloaded
+    once (E-6 S-13-3, S-13-4). Failed downloads are never stored in it."""
+    if documents is None:
+        documents = {}
     policies = []
     paginator = iam.get_paginator("list_attached_user_policies")
     for page in paginator.paginate(UserName=username):
         for item in page["AttachedPolicies"]:
             arn = item["PolicyArn"]
-            version_id = iam.get_policy(PolicyArn=arn)["Policy"]["DefaultVersionId"]
-            version = iam.get_policy_version(PolicyArn=arn, VersionId=version_id)
+            if arn not in documents:
+                version_id = iam.get_policy(PolicyArn=arn)["Policy"]["DefaultVersionId"]
+                version = iam.get_policy_version(PolicyArn=arn, VersionId=version_id)
+                documents[arn] = version["PolicyVersion"]["Document"]
             policies.append({"name": item["PolicyName"], "arn": arn,
-                             "document": version["PolicyVersion"]["Document"]})
+                             "document": documents[arn]})
     return policies
     
 
@@ -137,8 +144,8 @@ def read_inline_policies(iam, username):
     return {"status": status, "value": value, "code": code}
 
 
-def read_attached_policies(iam, username):
-    status, value, code = read_setting(lambda: get_attached_policies(iam, username))
+def read_attached_policies(iam, username, documents=None):
+    status, value, code = read_setting(lambda: get_attached_policies(iam, username, documents))
     return {"status": status, "value": value, "code": code}
 
 
@@ -183,11 +190,16 @@ def collect_iam(aws_session):
             
              
              
+    # managed policy documents already downloaded in this scan, by ARN
+    policy_documents = {}
     for us in usernames:
         record = {"service": "IAM", "resource_id": us}
         
         for field, helper, operation in SETTINGS:
-            setting = helper(iam, us)
+            if field == "attached_policies":
+                setting = helper(iam, us, policy_documents)
+            else:
+                setting = helper(iam, us)
             record[field] = {"status": setting["status"], "value": setting["value"]}
 
             # only this function records errors; the helpers just report status

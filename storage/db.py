@@ -171,6 +171,30 @@ def save_explanations(scan_id, explanations, db_path=None):
         conn.close()
 
 
+def save_errors(scan_id, errors, db_path=None):
+    """Adds error records to a scan that's already been saved (E-6 S-12-3).
+
+    The AI runs after the scan is saved, so its errors are added here. That way
+    a reopened scan still says why an explanation is missing.
+    """
+    conn = connect(db_path)
+    try:
+        if conn.execute("SELECT 1 FROM scans WHERE scan_id = ?", (scan_id,)).fetchone() is None:
+            return False, make_error("save_errors", f"Scan {scan_id} was not found.")
+        for error in errors:
+            if error["scan_id"] != scan_id:
+                return False, make_error("save_errors", f"An error record is not from scan {scan_id}.")
+        for error in errors:
+            conn.execute(INSERT_ERROR, error)
+        conn.commit()
+        return True, None
+    except sqlite3.Error as e:
+        conn.rollback()
+        return False, make_error("save_errors", str(e))
+    finally:
+        conn.close()
+
+
 def list_scans(db_path=None):
     """Returns every saved scan (just the scans table rows), newest first."""
     conn = connect(db_path)

@@ -77,6 +77,21 @@ class CoordinatorTests(unittest.TestCase):
         self.assertTrue(scan_progress.can_start(scan_progress.idle()))
 
 
+class RetryTests(unittest.TestCase):
+    """E-6 S-12-2: temporary AWS errors are retried a limited number of times."""
+
+    def test_every_aws_client_has_limited_retries_and_a_time_limit(self):
+        env = {"AWS_ACCESS_KEY_ID": "dummy", "AWS_SECRET_ACCESS_KEY": "dummy"}
+        with mock.patch.dict(os.environ, env):
+            session = coordinator.make_session()
+            for service in ["sts", "s3", "s3control", "iam"]:
+                config = session.client(service).meta.config
+                self.assertEqual(config.retries["mode"], "standard", service)
+                # the first try plus 3 retries, then it gives up
+                self.assertEqual(config.retries["total_max_attempts"], 4, service)
+                self.assertEqual((config.connect_timeout, config.read_timeout), (10, 30), service)
+
+
 class SetupCheckTests(unittest.TestCase):
     """test_connection.py (SCAN-6, NFR-SEC-4): clear setup messages that never show a key.
 

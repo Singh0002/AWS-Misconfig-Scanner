@@ -185,6 +185,9 @@ class AppWorkflowTests(unittest.TestCase):
         scans, error = db.list_scans()
         self.assertEqual(len(scans), 1)
         self.assertFalse(self.download_button().proto.disabled)
+        # the reason is saved with the scan, so it's still there when the scan is reopened
+        reopened, error = db.load_scan(scans[0]["scan_id"])
+        self.assertIn(("AI", "APIConnectionError"), [(e["stage"], e["message"]) for e in reopened["errors"]])
 
     def test_failed_save_is_reported_and_results_stay(self):
         failed = (False, {"stage": "storage", "operation": "save_scan", "resource_id": None,

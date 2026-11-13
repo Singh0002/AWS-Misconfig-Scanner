@@ -9,7 +9,7 @@ and run with:
 python -m unittest discover tests
 ```
 
-Status as of 11/8/2026: **138 tests, all passing**. The 2 live tests in
+Status as of 11/13/2026: **144 tests, all passing**. The 2 live tests in
 `test_live.py` are skipped unless `CLOUDGUARDIAN_LIVE=1` is set, because they
 need the real AWS test account and an Anthropic key.
 
@@ -25,13 +25,15 @@ The requirement IDs come from the requirement list in our Agile planning documen
 | NFR-SAFE-3, OUT-6 | Settings that can't be read, or were never collected, are incomplete, never passed | test_detection.IncompleteTests, test_integration.WorkflowTests | 3 + 1 | Pass |
 | FR-DET-3, DETECT-3 to DETECT-7 | Failed checks become findings with the rule's issue and severity; passing checks make none | test_detection.FindingTests | 4 | Pass |
 | SCAN-4, SCAN-5, FR-S3-1, FR-IAM-1, DOM-3 | Collectors read every setting, every page, and tell "not set" apart from "couldn't read" | test_collectors (NormalResponseTests, PagingTests, FailedRequestTests, MissingVsFailedTests) | 14 | Pass |
+| E-6 S-13-3, NFR-PERF-1 | A scan doesn't ask AWS for the same thing twice: account settings once per scan, and a policy shared by several users is downloaded once | test_collectors.RepeatedRequestTests | 3 | Pass |
+| E-6 S-12-2 | Temporary AWS errors are retried a limited number of times, with a time limit on every call | test_coordinator.RetryTests | 1 | Pass |
 | NFR-SAFE-1 | The scanner only makes read calls to AWS | test_collectors.ReadOnlyTests, test_integration.WorkflowTests | 2 + 1 | Pass |
 | SCAN-1 to SCAN-3, FR-UI-1 | S3, IAM or both; an empty selection doesn't start a scan; one scan at a time; a finished scan or an opened saved scan goes straight to the Results tab, a failed scan stays on Scan | test_coordinator.CoordinatorTests, test_coordinator.ScanPageTests | 7 + 7 | Pass |
 | SCAN-6, NFR-SEC-4, OUT-7 | Clear setup errors for missing, expired or denied credentials and the AI key, with no keys shown | test_coordinator.SetupCheckTests | 8 | Pass |
 | FR-UI-2, OUT-2 to OUT-5 | Results tab: findings most severe first, service and severity filters, finding details with the AI explanation or a clear message | test_coordinator.ResultsPageTests | 6 | Pass |
 | SCAN-6, NFR-SEC-4, FR-AI-1 | Settings tab: Check connection shows each check, shortens the account number, only makes read calls and gives a clear error with no keys; AWS and API key setup help and the AI hallucination warning are shown; dark mode, button color and reset change the theme | test_coordinator.SettingsPageTests | 4 | Pass |
 | AI-1 to AI-6, FR-AI-1, FR-AI-2, NFR-SEC-1 | AI explanations: only finding data is sent with secrets removed; bad, missing or failed replies are unavailable and never change a finding | test_ai (RequestTests, ReplyTests, FailedRequestTests) | 18 | Pass |
-| OUT-1 (course database outline), NFR-SEC-1 | Save, reopen, list and delete scans; a failed save rolls back; no credentials stored | test_storage.StorageTests | 14 | Pass |
+| OUT-1 (course database outline), NFR-SEC-1 | Save, reopen, list and delete scans; a failed save rolls back; no credentials stored; AI errors are added to a saved scan | test_storage.StorageTests | 16 | Pass |
 | OUT-1, FR-REP-1, NFR-SEC-1 | Report has the scan details, findings, explanations and incomplete checks; matches a reopened scan; HTML is escaped; no secrets; Download report button | test_reporting (ReportContentTests, ReportSafetyTests, DownloadButtonTests) | 10 | Pass |
 | All of the above together | A known misconfiguration followed through collectors, rules, storage, AI and report; AI outage, failed save and unreadable resources; HTTPS for AWS and Anthropic | test_integration (WorkflowTests, AppWorkflowTests) | 12 | Pass |
 
