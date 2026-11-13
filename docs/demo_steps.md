@@ -15,7 +15,7 @@ For the final presentation on 11/16/2026. About 8 to 10 minutes of live demo.
 
 ## Demo script
 
-| # | Do | Say |
+| # | Do | Explanation  |
 |---|---|---|
 | 1 | Run `streamlit run app.py` | "CloudGuardian runs on your own computer. Nothing is hosted." |
 | 2 | Settings tab, press Check connection | "It checks the AWS credentials and read access to S3 and IAM. It only reads, and it never shows a key." |
