@@ -99,7 +99,7 @@ After a scan the app sends the findings to Anthropic and shows a short explanati
 
 Paste your API key and pick a model (Opus, Sonnet or Haiku) on the Settings tab. The AI explanations switch is on the Scan tab. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database above), not in the repo. Untick it to delete the file. You can also set `ANTHROPIC_API_KEY` like in Setup.
 
-Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
+Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The reason is saved with the scan, so it still shows under "Checks that couldn't run, and errors" when you reopen it. The rule results and severity don't change either way.
 
 We tested 50 explanations on findings from simple to complicated and didn't get any hallucinations, but it can still happen, so double check the fix steps before changing anything in AWS. Opus gives the best explanations, then Sonnet, then Haiku.
 
@@ -108,6 +108,14 @@ After a scan, or after opening one from Saved scans, press Download report on th
 
 ## Filters
 The S3, IAM, High, Medium and Low buttons above the findings pick which ones are listed. A finding shows when both its service and its severity are picked. The counts at the top and the downloaded report always include every finding.
+
+## Documentation
+- `docs/project_overview.md`: what the app does, how a scan works, and each of the 10 rules
+- `docs/security_review.md`: how credentials are handled and how that was checked
+- `docs/test_traceability.md`: which tests cover which requirements
+- `docs/test_record.md`: test results, and the checklists for the real AWS test account
+- `docs/sprint_summary.md`: the sprint plans and what each sprint delivered
+- `docs/demo_steps.md`: the steps for the final demo
 
 ## Tests
 ```
