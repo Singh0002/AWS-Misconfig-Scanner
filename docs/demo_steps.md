@@ -1,6 +1,6 @@
 # Final demo steps (E-8 S-16-6)
 
-For the final presentation on 11/16/2026. About 6 to 8 minutes of live demo.
+For the final presentation on 11/16/2026. About 8 to 10 minutes of live demo.
 
 ## Before the demo
 
