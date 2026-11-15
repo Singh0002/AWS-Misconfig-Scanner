@@ -1,9 +1,4 @@
-"""Turns collector records into checks and findings (E-2 S-3-5, E-2 S-4-4, E-3 S-5-5, E-3 S-6-4).
-
-The collectors and the rules use slightly different shapes, so to_bucket and
-to_user convert a collector record into what the rules expect. A setting the
-collector couldn't read goes into "errors", so the rule marks it incomplete.
-"""
+"""Runs the rules on collected settings and builds checks and findings."""
 
 import results
 from collectors import iam, s3

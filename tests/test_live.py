@@ -1,16 +1,5 @@
-"""5.3 Live integration tests against the real AWS test account and Anthropic.
-
-These are skipped unless you turn them on, because they need real
-credentials and the AI one costs a little money:
-
-    set CLOUDGUARDIAN_LIVE=1                  # Windows (cmd)
-    $env:CLOUDGUARDIAN_LIVE="1"               # Windows (PowerShell)
-    export CLOUDGUARDIAN_LIVE=1               # Ubuntu
-    python -m unittest discover tests -p "test_live.py"
-
-Use the read-only test account from Setup. The AI test also needs
-ANTHROPIC_API_KEY set.
-"""
+"""Tests against a real AWS account and the Anthropic API.
+Set CLOUDGUARDIAN_LIVE=1 to run these tests."""
 
 import os
 import time

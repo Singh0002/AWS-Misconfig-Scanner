@@ -1,8 +1,4 @@
-"""CloudGuardian Streamlit page. Run it with: streamlit run app.py
-
-This file just draws the page. The AWS, AI and database code live in their
-own modules. Colors, font and corners come from .streamlit/config.toml.
-"""
+"""CloudGuardian interface. Run with: streamlit run app.py"""
 
 import json
 import os

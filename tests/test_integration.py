@@ -1,11 +1,4 @@
-"""5.3 Integration tests.
-
-These connect the real modules: collectors -> rules -> storage -> AI ->
-report, using the fake AWS account and fake AI. A known misconfiguration
-is followed through every step. Then the failure cases: an unreadable
-resource, an AI outage and a database that can't be written. The page
-tests run the real app.py.
-"""
+"""Tests how the app modules work together using fake services."""
 
 import json
 import os

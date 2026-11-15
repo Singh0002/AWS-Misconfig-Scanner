@@ -1,17 +1,4 @@
-"""Scan progress and the "only one scan at a time" rule for the Scan tab (S-2-4).
-
-This file has no Streamlit code so it can be tested on its own. The app keeps
-one of these dictionaries in st.session_state and redraws the progress bar
-from it.
-
-How the coordinator should report progress: app.py calls
-
-    coordinator.run_scan(selected_services, selected_rules, on_progress)
-
-and the coordinator calls on_progress(done, total, message) after each step,
-for example on_progress(3, 10, "Checking S3 versioning"). It should return the
-finished scan dictionary from results.new_scan().
-"""
+"""Tracks scan progress and prevents overlapping scans."""
 
 IDLE = "idle"
 RUNNING = "running"

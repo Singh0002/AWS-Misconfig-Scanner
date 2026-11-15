@@ -1,10 +1,10 @@
-"""Saves and loads scans with SQLite.
+"""SQLite storage for CloudGuardian.
 
-The tables are the five from section 6 of our design doc, and scans come in
-using the format in results.py. Never store credentials here.
+The five tables come from Section 6 of the design document Scans are saved
+in the format from results.py. Credentials are never stored here.
 
-Each function returns (result, error). error is None if it worked, otherwise
-it's a dict with a message we can show on the page.
+Every function returns two things: the result and an error. If it worked the
+error is None. If it failed, the error is a dict with a message to show.
 """
 
 import os
@@ -64,7 +64,7 @@ CREATE INDEX IF NOT EXISTS idx_checks_scan_id ON checks (scan_id);
 CREATE INDEX IF NOT EXISTS idx_scan_errors_scan_id ON scan_errors (scan_id);
 """
 
-# sqlite fills in each :name from the record dict with the same key
+# The :names get filled in from the matching keys of each record.
 INSERT_SCAN = """INSERT INTO scans VALUES
     (:scan_id, :account_id, :scan_time, :selected_services, :scan_status, :coverage_status)"""
 INSERT_CHECK = """INSERT INTO checks VALUES
@@ -78,7 +78,7 @@ INSERT_ERROR = """INSERT INTO scan_errors (scan_id, stage, operation, resource_i
 
 
 def default_db_path():
-    """Path to the database file. CLOUDGUARDIAN_DB overrides it (tests use this)."""
+    """Where the database file lives. Set CLOUDGUARDIAN_DB to use a different file."""
     if os.environ.get("CLOUDGUARDIAN_DB"):
         return Path(os.environ["CLOUDGUARDIAN_DB"])
     if os.name == "nt":  # Windows
@@ -87,12 +87,12 @@ def default_db_path():
 
 
 def connect(db_path=None):
-    """Opens the database. row_factory lets us use row["column_name"]."""
+    """Open the database. Rows come back so you can use row["column_name"]."""
     if db_path is None:
         db_path = default_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")  # off by default in sqlite
+    conn.execute("PRAGMA foreign_keys = ON")  # SQLite has this off by default
     return conn
 
 
@@ -101,7 +101,7 @@ def make_error(operation, message):
 
 
 def init_db(db_path=None):
-    """Makes the folder and tables if they aren't there yet."""
+    """Create the folder and the tables if they don't exist yet."""
     if db_path is None:
         db_path = default_db_path()
     try:
@@ -115,7 +115,7 @@ def init_db(db_path=None):
 
 
 def save_scan(scan, db_path=None):
-    """Saves the whole scan in one transaction, so it's all or nothing."""
+    """Save a whole scan. If any part fails, nothing is saved."""
     conn = connect(db_path)
     try:
         conn.execute(INSERT_SCAN, scan["metadata"])
@@ -137,14 +137,15 @@ def save_scan(scan, db_path=None):
 
 
 def save_explanations(scan_id, explanations, db_path=None):
-    """Saves the AI explanations for a scan that's already been saved.
+    """Save AI explanations after the scan is already saved.
 
-    Kept separate from save_scan so an AI failure can't wipe out the rule
-    results. If a finding already has an explanation, the new one replaces it.
+    This is separate from save_scan so that if the AI part fails, the rule
+    results that were already saved are not lost. Saving an explanation for
+    a finding that already has one replaces the old one.
     """
     conn = connect(db_path)
     try:
-        # don't allow explanations for findings from some other scan
+        # Make sure every explanation is for a finding in this scan.
         rows = conn.execute("""
             SELECT findings.finding_id FROM findings
             JOIN checks ON checks.check_id = findings.check_id
@@ -172,7 +173,7 @@ def save_explanations(scan_id, explanations, db_path=None):
 
 
 def list_scans(db_path=None):
-    """Returns every saved scan (just the scans table rows), newest first."""
+    """All saved scans (just the scans table), newest first."""
     conn = connect(db_path)
     try:
         rows = conn.execute("SELECT * FROM scans ORDER BY scan_time DESC").fetchall()
@@ -187,7 +188,7 @@ def list_scans(db_path=None):
 
 
 def load_scan(scan_id, db_path=None):
-    """Loads a saved scan back into the same format as results.py."""
+    """Load one saved scan back into the results.py format."""
     conn = connect(db_path)
     try:
         row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
@@ -229,7 +230,7 @@ def load_scan(scan_id, db_path=None):
 
 
 def delete_scan(scan_id, db_path=None):
-    """Deletes a scan. ON DELETE CASCADE removes its checks, findings, etc. too."""
+    """Delete a scan. Its checks, findings, explanations and errors are deleted too."""
     conn = connect(db_path)
     try:
         cursor = conn.execute("DELETE FROM scans WHERE scan_id = ?", (scan_id,))

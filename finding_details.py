@@ -1,16 +1,4 @@
-"""What the Results tab shows when someone picks a finding (E-4 S-7-3).
-
-This file has no Streamlit code so it can be tested on its own. app.py calls
-details(scan, finding) and draws what comes back.
-
-The AI explanation can be in one of four states:
-    available    - the AI explained it; show the text and the fix steps
-    pending      - the AI hasn't been asked yet
-    unavailable  - the AI was off or failed
-    none         - there's no explanation record for this finding at all
-Only "available" has text. The rule result is shown either way, because the
-rules decide pass/fail, not the AI.
-"""
+"""Prepares finding details and explanations for the Results tab."""
 
 import json
 

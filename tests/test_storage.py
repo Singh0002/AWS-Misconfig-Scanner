@@ -1,10 +1,4 @@
-"""5.2 Storage tests (the database requirement, design doc section 6).
-
-Every test uses its own temporary SQLite file, so real scan history is
-never touched. Save and load, scans with no findings or missing
-explanations, more than one scan, foreign keys, duplicate IDs, rollback,
-a busy database, a failed write, and odd text stored as plain data.
-"""
+"""Tests saving, loading, and deleting scans in SQLite."""
 
 import json
 import os

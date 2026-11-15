@@ -1,14 +1,5 @@
-"""Checks that this machine is set up to run CloudGuardian (S-1-4).
-
-Run it from the project folder with:
-
-    python test_connection.py              # AWS credentials, S3 and IAM read access, AI key
-    python test_connection.py --ai-call    # also makes one tiny AI request to confirm credits
-
-It only reads from AWS. It never prints keys or secrets, only whether each
-check worked and what to fix if it didn't. Each check_ function returns
-(ok, message) so the app's "Check connection" button can reuse them.
-"""
+"""Checks AWS credentials, service access, and the AI key.
+Run with --ai-call to test the AI connection."""
 
 import os
 import sys

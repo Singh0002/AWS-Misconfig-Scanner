@@ -1,9 +1,4 @@
-"""Runs a scan: the collectors first, then the rules (E-1 S-2-3).
-
-app.py calls run_scan(selected_services, selected_rules, on_progress) and
-gets back the finished scan from results.new_scan(). Every AWS call here is
-read-only.
-"""
+"""Runs the collectors and rules to produce a scan."""
 
 from botocore.exceptions import BotoCoreError, ClientError
 

@@ -1,20 +1,5 @@
-"""The downloadable HTML report.
-
-build_report(scan) returns the whole page as one HTML string. It works the
-same for the scan that just ran and for one opened from Saved scans, because
-both have the same shape (results.py).
-
-    page layout                      E-4 S-10-1
-    scan details and findings        E-4 S-10-2
-    explanations, incomplete checks  E-4 S-10-3
-    escaping                         E-4 S-10-4
-
-Every value that comes from AWS, the AI or the database goes through esc()
-before it is added to the HTML. Bucket names, usernames, policy text and AI
-answers are data, so something like "<script>" must show as text and never
-run in the report. The page has no scripts and loads nothing from the web,
-so it opens the same anywhere, even offline.
-"""
+"""Builds an HTML report from a new or saved scan.
+Escapes scan data before adding it to the page."""
 
 import html
 import json

@@ -1,20 +1,4 @@
-"""The result format every module uses (collectors, rules, AI, storage).
-
-Results are just dictionaries. Each one has the same keys as its table in
-storage/db.py so we can save them without converting anything.
-
-A full scan looks like:
-
-    {
-        "metadata": {...},      # the scans table row
-        "checks": [...],        # every resource + rule we checked
-        "findings": [...],      # only the checks that failed
-        "explanations": [...],  # AI output, one per finding
-        "errors": [...],        # what went wrong (no secrets in here!)
-    }
-
-Please use the make_ functions instead of writing the dicts yourself.
-"""
+"""Defines the scan records shared by the app, storage, and reports."""
 
 import json
 import uuid

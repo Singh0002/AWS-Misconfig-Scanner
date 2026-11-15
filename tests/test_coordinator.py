@@ -1,10 +1,4 @@
-"""5.2 Interface and coordinator tests (SCAN-1 to SCAN-6, FR-UI-1).
-
-S3-only, IAM-only and combined scans, an empty selection, missing
-credentials, no duplicate scans on a rerun, the running flag clearing after
-an error, and a new ID for every scan. The page tests run the real app.py
-with Streamlit's test runner.
-"""
+"""Tests scan coordination and the Streamlit interface."""
 
 import os
 import tempfile

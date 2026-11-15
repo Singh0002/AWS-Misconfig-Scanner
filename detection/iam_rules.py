@@ -1,35 +1,4 @@
-"""The five IAM rules (E-3 S-5-2, S-5-3, S-5-4, E-3 S-6-2, S-6-3).
-
-Results use the same shape as detection/s3_rules.py:
-
-    {"rule_id": ..., "resource_id": ..., "status": "pass" | "fail" | "incomplete",
-     "evidence": {...}, "reason": None}
-
-The user dict the collector should pass in:
-
-    {
-        "name": "alice",
-        "policies": [   # inline and attached policies, with their documents
-            {"name": "AdminFullAccess", "type": "inline", "document": {...}},
-        ],
-        "mfa_devices": <list_mfa_devices()["MFADevices"]>,
-        "access_keys": [   # list_access_keys()["AccessKeyMetadata"], plus each
-                           # key's LastUsedDate from get_access_key_last_used
-            {"AccessKeyId": ..., "Status": "Active", "CreateDate": <datetime>,
-             "LastUsedDate": <datetime> or None},
-        ],
-        "errors": {"policies": "AccessDenied", ...},  # data that couldn't be read
-    }
-
-Two rules are for the whole account instead of one user:
-    - root MFA takes the account summary from get_account_summary()
-      (either the whole response or just its "SummaryMap")
-    - password policy takes get_account_password_policy()["PasswordPolicy"],
-      or None if the account has no password policy
-
-check_user runs the three per-user rules: admin wildcard, user MFA and
-unused access keys.
-"""
+"""Checks IAM settings for five common misconfigurations."""
 
 from datetime import datetime, timezone
 
@@ -84,12 +53,8 @@ def is_admin_statement(statement):
 
 
 def check_admin_wildcard(user):
-    """Rule 6: no policy gives the user every action on every resource.
-
-    A statement with a Condition (for example, only from one IP range) is
-    treated as restricted and doesn't fail, but it is listed in the evidence
-    so the user can still see it.
-    """
+    """Checks for full access to all resources.
+    Conditional access is listed in the evidence but does not fail."""
     incomplete = read_error("iam_admin_wildcard", user, "policies")
     if incomplete:
         return incomplete
@@ -132,10 +97,8 @@ def check_user_mfa(user):
 
 
 def check_root_mfa(account_summary, error=None):
-    """Rule 8: AccountMFAEnabled is 1 in the account summary.
-
-    error is the reason get_account_summary failed, if it did.
-    """
+    """Checks root MFA in the account summary.
+    An unreadable summary gives an incomplete result."""
     if error is not None or account_summary is None:
         reason = f"Couldn't read the account summary ({error or 'not collected'})."
         return make_result("iam_root_mfa", "root", "incomplete", reason=reason)
@@ -151,12 +114,8 @@ def check_root_mfa(account_summary, error=None):
 
 
 def check_password_policy(policy, error=None):
-    """Rule 9: the account password policy is at least 14 characters and
-    needs uppercase, lowercase, numbers and symbols.
-
-    error is the reason get_account_password_policy failed, if it did.
-    No policy at all fails, because the AWS default has none of these.
-    """
+    """Checks password length and required character types.
+    A missing policy fails; an unreadable policy is incomplete."""
     if error is not None:
         return make_result("iam_password_policy", "account", "incomplete",
                            reason=f"Couldn't read the password policy ({error}).")
@@ -177,12 +136,8 @@ def check_password_policy(policy, error=None):
 
 
 def check_unused_access_keys(user, now=None):
-    """Rule 10: no active access key has gone unused for more than 90 days.
-
-    A key that was never used counts from the day it was created. Inactive
-    keys are skipped because they can't be used to sign in. now can be set
-    so tests get the same answer every day.
-    """
+    """Checks active keys for more than 90 days without use.
+    Never-used keys are checked from their creation date."""
     incomplete = read_error("iam_unused_access_key", user, "access_keys")
     if incomplete:
         return incomplete

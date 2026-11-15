@@ -1,9 +1,4 @@
-"""Small helpers for reading AWS policy documents. Used by the S3 and IAM rules.
-
-AWS lets most policy fields be either one value or a list, e.g. "Action": "*"
-or "Action": ["s3:GetObject", "s3:PutObject"]. These helpers smooth that out
-so the rules don't have to check both every time.
-"""
+"""Helpers for reading AWS policy documents."""
 
 import json
 

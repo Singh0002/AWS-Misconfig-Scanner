@@ -1,9 +1,4 @@
-"""5.2 Reporting tests (FR-REP-1, OUT-1 to OUT-8, NFR-SEC-1).
-
-The report has to match the scan it came from, new or loaded, and cover
-findings, no findings, incomplete checks and unavailable explanations.
-Anything from AWS or the AI that looks like HTML has to show up as text.
-"""
+"""Tests report contents and HTML escaping."""
 
 import os
 import tempfile
