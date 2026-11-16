@@ -1,14 +1,5 @@
-"""Gets plain-language explanations and fix steps for a scan's findings (E-4 S-9-1, S-9-3).
-
-app.py calls explain_scan(scan) after the rules finish. It returns one
-explanation per finding and never changes the checks, findings or severity.
-
-The key is the one pasted in Settings, or else the ANTHROPIC_API_KEY
-environment variable, so it never goes in the repo. "Remember this key"
-saves it in api_key.txt next to the database. If there's no key, the
-request fails, or it takes longer than 30 seconds, those findings are just
-marked unavailable.
-"""
+"""Gets AI explanations and fix steps for scan findings.
+The AI does not change the findings or their severity."""
 
 import json
 import os

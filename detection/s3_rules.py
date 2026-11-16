@@ -1,31 +1,4 @@
-"""The five S3 rules (E-2 S-3-2, S-3-3, S-3-4, S-4-2, S-4-3).
-
-Each rule looks at the settings for one bucket and returns a result dict:
-
-    {"rule_id": "s3_versioning", "resource_id": "my-bucket",
-     "status": "pass" | "fail" | "incomplete",
-     "evidence": {...},   # what the rule saw, small and secret-free
-     "reason": None}      # why the check is incomplete, otherwise None
-
-The rules only decide pass/fail. Turning a result into a check and finding
-(results.make_check / make_finding) happens after this, using RULE_INFO for
-the issue text and severity.
-
-The bucket dict the collector should pass in:
-
-    {
-        "name": "my-bucket",
-        "acl": <get_bucket_acl response>,
-        "public_access_block": <PublicAccessBlockConfiguration> or None if not set,
-        "policy": <bucket policy as a dict or JSON string> or None if not set,
-        "versioning": <get_bucket_versioning response>,
-        "errors": {"policy": "AccessDenied", ...},  # settings that couldn't be read
-    }
-
-A setting listed in "errors" makes the rules that need it incomplete, never
-pass. A setting that is None means AWS said it isn't set, which is different
-from not being able to read it.
-"""
+"""Checks S3 settings for five common misconfigurations."""
 
 from detection.policy import as_list, has_condition, is_public_principal, statements
 
@@ -86,12 +59,8 @@ def check_public_acl(bucket):
 
 
 def check_block_public_access(bucket, account_block=None):
-    """Rule 2: all four Block Public Access settings are on.
-
-    account_block is the account-wide setting (s3control
-    get_public_access_block). A flag counts as on if either the bucket or the
-    account turns it on, because AWS applies whichever is stricter.
-    """
+    """Checks that all four public access blocks are on.
+    Each setting can come from the bucket or the account."""
     incomplete = read_error("s3_block_public_access", bucket, "public_access_block")
     if incomplete:
         return incomplete
@@ -111,11 +80,8 @@ def check_block_public_access(bucket, account_block=None):
 
 
 def check_wildcard_principal(bucket):
-    """Rule 3: no Allow statement for any principal ("*") without a Condition.
-
-    Allow with NotPrincipal also counts, since it means everyone except
-    the listed principals.
-    """
+    """Checks for an unrestricted policy that allows public access.
+    Allow statements with NotPrincipal also count."""
     incomplete = read_error("s3_wildcard_principal", bucket, "policy")
     if incomplete:
         return incomplete

@@ -3,55 +3,8 @@ from collectors.common import read_setting, error_code
 import json
 
 
-"""collectors/s3.py
-
-Reads, for every bucket: ACL, Block Public Access settings, versioning,
-and bucket policy.
-Read-only calls only: list_buckets, get_bucket_acl, get_public_access_block,
-get_bucket_versioning, get_bucket_policy.
-
-Returns {"records": [...], "errors": [...]}
-
-Record shape (one per bucket). Every field is always present:
-    {
-        "service": "S3",
-        "resource_id": "<bucket name>",
-        "acl": {
-            "status": "available" | "missing" | "failed",
-            "value": {"Owner": ..., "Grants": [...]} or None
-        },
-        "public_access_block": {
-            "status": ...,
-            "value": {"BlockPublicAcls": bool, "IgnorePublicAcls": bool,
-                      "BlockPublicPolicy": bool, "RestrictPublicBuckets": bool} or None
-        },
-        "versioning": {
-            "status": ...,
-            "value": {"Status": "Enabled" | "Suspended" | None} or None
-        },
-        "policy": {
-            "status": ...,
-            "value": <parsed policy dict> or None
-        },
-    }
-
-What the statuses mean:
-    available - AWS answered, value holds the data
-    missing   - AWS confirmed the setting does not exist
-                (only public_access_block and policy can be missing)
-    failed    - we could not find out (denied, throttled, network, bad JSON);
-                rules must treat this as incomplete, never as a pass
-
-Notes for the rules:
-    - versioning never returns "missing". A bucket that never had versioning
-      is "available" with Status None. Treat None and "Suspended" as disabled.
-    - policy is already parsed, so the wildcard and HTTPS rules both read it
-      from here without fetching it again.
-
-Error shape (one per failed setting, or one if the bucket listing fails):
-    {"operation": "<api call name>", "resource_id": "<bucket or None>",
-     "message": "<error code only>"}
-"""
+"""Reads bucket ACLs, public access settings, versioning, and policies.
+Returns records and errors without changing AWS settings."""
 
 def list_buckets(s3):
     bucket_names = []

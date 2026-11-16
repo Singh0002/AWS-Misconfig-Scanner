@@ -1,10 +1,4 @@
-"""5.2 Interface and coordinator tests (SCAN-1 to SCAN-6, FR-UI-1).
-
-S3-only, IAM-only and combined scans, an empty selection, missing
-credentials, no duplicate scans on a rerun, the running flag clearing after
-an error, and a new ID for every scan. The page tests run the real app.py
-with Streamlit's test runner.
-"""
+"""Tests scan coordination and the Streamlit interface."""
 
 import os
 import tempfile
@@ -93,7 +87,7 @@ class RetryTests(unittest.TestCase):
 
 
 class SetupCheckTests(unittest.TestCase):
-    """test_connection.py (SCAN-6, NFR-SEC-4): clear setup messages that never show a key.
+    """Checks that setup messages do not show keys.
 
     FakeAWS puts DUMMY_SECRET in every AWS error message, so these fail if a
     message ever passes AWS's text through to the user.
@@ -264,7 +258,7 @@ class ScanPageTests(unittest.TestCase):
 
 
 class SettingsPageTests(unittest.TestCase):
-    """The Check connection button on the Settings tab (SCAN-6, NFR-SEC-4)."""
+    """Tests the Check connection button on the Settings tab."""
 
     def setUp(self):
         import streamlit as st
@@ -355,7 +349,7 @@ def mixed_scan():
 
 
 class ResultsPageTests(unittest.TestCase):
-    """The Results tab in the real app (FR-UI-2): filters and the finding details panel."""
+    """Tests the Results tab filters and finding details."""
 
     def setUp(self):
         import streamlit as st

@@ -1,10 +1,4 @@
-"""Checks the JSON reply and matches it to the findings (E-4 S-9-2, S-9-3).
-
-parse_reply(text, finding_ids) always gives back one explanation per
-finding ID, in the same order. If the reply is missing, isn't valid JSON,
-or leaves a finding out, that finding is marked unavailable. Anything for a
-finding we didn't ask about is ignored.
-"""
+"""Checks AI replies and matches explanations to findings."""
 
 import json
 

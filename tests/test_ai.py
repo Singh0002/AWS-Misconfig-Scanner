@@ -1,11 +1,4 @@
-"""5.2 AI processing tests (FR-AI-1, FR-AI-2, AI-1 to AI-6, NFR-SEC-1).
-
-No real AI is called. FakeAI stands in for Anthropic, so these run offline
-and cost nothing. JSON formatting, secret removal, valid explanations,
-unknown or duplicate finding IDs, missing fields, malformed replies, rate
-limits and timeouts. Whatever happens, the finding and its severity never
-change and a failure just marks the explanation unavailable.
-"""
+"""Tests AI requests, reply formatting, and failure handling."""
 
 import json
 import os

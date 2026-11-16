@@ -1,8 +1,4 @@
-"""CloudGuardian Streamlit page. Run it with: streamlit run app.py
-
-This file just draws the page. The AWS, AI and database code live in their
-own modules. Colors, font and corners come from .streamlit/config.toml.
-"""
+"""CloudGuardian interface. Run with: streamlit run app.py"""
 
 import json
 import os
@@ -539,7 +535,7 @@ with results_tab:
 
     title_col, report_col = st.columns([3, 1], vertical_alignment="bottom")
     title_col.subheader("Scan results", anchor=False)
-    # the report for whatever scan is open, new or saved (E-4 S-10)
+    # Download a report for the open scan.
     if scan is None:
         title_col.caption("No scan open. Run a scan, or open one from Saved scans.")
         report_col.download_button("Download report", data="", file_name="cloudguardian-report.html",
@@ -579,7 +575,7 @@ with results_tab:
             for finding in scan["findings"]:
                 if finding["severity"] == severity:
                     findings.append(finding)
-    # service and severity filters (E-4 S-7-2). They only change the list below
+    # Filter the findings by service and severity.
     with filter_col:
         shown = st.pills("Show", finding_details.FILTERS, selection_mode="multi",
                          default=finding_details.FILTERS, label_visibility="collapsed", key="filters")
@@ -593,7 +589,7 @@ with results_tab:
         elif len(findings) == 0:
             st.write("No findings match the filters.")
 
-    # each finding opens to show its details and the AI explanation (E-4 S-7-3).
+    # Show each finding and its explanation.
     # the first one starts open
     for number, finding in enumerate(findings):
         show_finding(scan, finding, expanded=number == 0)

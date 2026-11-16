@@ -1,9 +1,4 @@
-"""5.2 Detection tests (FR-DET-1, FR-DET-2, DETECT-1 to DETECT-7).
-
-A passing and a failing case for every S3 and IAM rule, policy conditions,
-the 89/90/91 day access key boundary, inactive and never-used keys, missing
-data giving incomplete, and failed checks making the right finding.
-"""
+"""Tests the S3 and IAM detection rules."""
 
 import json
 import unittest
@@ -157,7 +152,7 @@ class IncompleteTests(unittest.TestCase):
         self.assertEqual(iam_rules.check_root_mfa(None, "AccessDenied")["status"], "incomplete")
         self.assertEqual(iam_rules.check_password_policy(None, "AccessDenied")["status"], "incomplete")
 
-    def test_data_that_was_never_collected_is_incomplete_not_passed(self):
+    def test_uncollected_data_is_incomplete(self):
         b = bucket()
         del b["versioning"]
         self.assertEqual(s3_rules.check_versioning(b)["status"], "incomplete")
@@ -165,7 +160,7 @@ class IncompleteTests(unittest.TestCase):
         del u["access_keys"]
         self.assertEqual(iam_rules.check_unused_access_keys(u)["status"], "incomplete")
 
-    def test_incomplete_checks_mark_the_scan_coverage_incomplete(self):
+    def test_incomplete_checks_affect_coverage(self):
         aws = FakeAWS(buckets=[bad_bucket("b1")], fail={"get_bucket_versioning": "AccessDenied"})
         scan = results.new_scan(["S3"])
         findings.check_s3(scan, s3.collect_s3(FakeSession(aws)))
@@ -289,14 +284,14 @@ class PolicyEdgeCaseTests(unittest.TestCase):
         self.assertEqual(result["status"], "pass")
         self.assertEqual(result["evidence"]["conditional_admin"][0]["policy"], "OfficeAdmin")
 
-    def test_policy_whose_text_is_missing_is_incomplete_not_passed(self):
+    def test_missing_policy_text_is_incomplete(self):
         policies = [{"name": "Mystery", "type": "attached", "document": None}]
         self.assertEqual(iam_rules.check_admin_wildcard(user(policies=policies))["status"], "incomplete")
 
     def test_root_summary_without_the_mfa_value_is_incomplete(self):
         self.assertEqual(iam_rules.check_root_mfa({"SummaryMap": {}})["status"], "incomplete")
 
-    def test_stale_key_evidence_shows_only_the_last_4_characters(self):
+    def test_stale_key_shows_last_four_characters(self):
         key = access_key(last_used=200)
         result = iam_rules.check_unused_access_keys(user(access_keys=[key]))
         self.assertEqual(result["evidence"]["stale_keys"][0]["key_ending"], key["AccessKeyId"][-4:])

@@ -1,10 +1,4 @@
-"""Fake AWS, fake Anthropic and sample scans shared by the tests (design doc 5.1).
-
-Nothing here talks to the internet. FakeAWS is a pretend account that only
-answers read calls (get_ and list_). Any other call, like put_bucket_policy,
-fails the test right away, so we'd know if the scanner ever tried to change
-something in AWS.
-"""
+"""Fake AWS and AI responses and sample scans used by the tests."""
 
 import itertools
 import json

@@ -1,10 +1,4 @@
-"""5.2 Collector tests (FR-S3-1, FR-IAM-1).
-
-Normal responses, empty lists, more than one page, denied permissions,
-throttling and timeouts. A setting AWS says doesn't exist ("missing") has
-to come back different from one we couldn't read ("failed"), and the
-collectors may only make read-only calls.
-"""
+"""Tests AWS collectors, including missing settings and errors."""
 
 import unittest
 
