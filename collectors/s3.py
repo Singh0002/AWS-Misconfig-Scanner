@@ -86,7 +86,7 @@ def collect_s3(aws_session):
             setting = helper(s3, bn)
             record[field] = {"status": setting["status"], "value": setting["value"]}
 
-            # only this function records errors; the helpers just report status
+            # only this function records errors,, the helpers just report status
             if setting["status"] == "failed":
                 errors.append({"operation": operation, "resource_id": bn,
                                "message": setting["code"]})
