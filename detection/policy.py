@@ -34,5 +34,5 @@ def is_public_principal(principal):
 
 
 def has_condition(statement):
-    # an empty Condition block restricts nothing, so it counts as no condition
+    # an empty Condition block restricts nothing it counts as no condition
     return bool(statement.get("Condition"))
