@@ -33,7 +33,7 @@ RULES = {
     },
 }
 
-# name in the Settings dropdown -> model ID sent to Anthropic
+# name in the Settings dropdown, model ID sent to Anthropic
 MODELS = {
     "Opus": "claude-opus-5-5",
     "Sonnet": "claude-sonnet-5-5",
@@ -71,7 +71,7 @@ DARK_THEME = {
     "yellowColor": "#E3C75A",
 }
 
-# help text for the "How do I set this up?" buttons in Settings
+# help text for the "How do I set this up?" buttons in Settings and for AI
 AWS_HELP = """
 **Don't have AWS set up yet? Here's what to do.**
 
@@ -145,7 +145,7 @@ def scan_label(scan):
 
 
 def short_account(account_id):
-    # only the last 4 digits go on the page, like ...9012
+    # only the last 4 digits go on the page, like ...9012 for ex
     if not account_id:
         return "unknown"
     return "..." + str(account_id)[-4:]
@@ -565,7 +565,7 @@ with results_tab:
                        icon=":material/warning:")
 
     heading_col, filter_col = st.columns([1, 2], vertical_alignment="center")
-    # sort findings High -> Medium -> Low
+    # sort findings High - Medium - Low
     findings = []
     if scan is not None:
         for severity in ["High", "Medium", "Low"]:
@@ -586,7 +586,7 @@ with results_tab:
         elif len(findings) == 0:
             st.write("No findings match the filters.")
 
-    # Show each finding and its explanation.
+    # Show each finding and its explanation
     # the first one starts open
     for number, finding in enumerate(findings):
         show_finding(scan, finding, expanded=number == 0)
