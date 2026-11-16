@@ -68,7 +68,7 @@ class ReportSafetyTests(unittest.TestCase):
 
 
 class DownloadButtonTests(unittest.TestCase):
-    """The Download report button on the Results tab (FR-REP-1)."""
+    """Tests the Download report button on the Results tab."""
 
     def setUp(self):
         from unittest import mock

@@ -112,8 +112,8 @@ def explanations_html(scan):
         parts.append("</section>")
         return "\n".join(parts)
 
-    parts.append('<p class="note">Explanations are written by AI to help you fix each finding. '
-                 "The rules decide pass or fail, not the AI.</p>")
+    parts.append('<p class="note">AI explains each finding and suggests fixes. '
+                 "The scanner rules determine pass or fail.</p>")
     for finding in sorted_findings(scan):
         check = find_check(scan, finding["check_id"]) or {}
         ai = explanation_view(find_explanation(scan, finding["finding_id"]))
@@ -182,7 +182,7 @@ footer { margin-top: 40px; font-size: 0.9em; }
 
 
 def build_report(scan):
-    """The whole report as one HTML page (E-4 S-10-1)."""
+    """Builds the report as one HTML page."""
     meta = scan["metadata"]
     title = "CloudGuardian report " + format_time(meta["scan_time"])
     return "\n".join([

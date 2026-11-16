@@ -23,7 +23,7 @@ FILTERS = SERVICE_FILTERS + SEVERITY_FILTERS
 
 
 def filter_findings(scan, findings, shown):
-    """The findings whose service AND severity are both picked in the filters (E-4 S-7-2).
+    """Findings that match the selected service and severity filters.
 
     shown is the list of picked filter names, e.g. ["S3", "High", "Medium"].
     None (nothing set yet) shows everything.

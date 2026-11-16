@@ -72,7 +72,7 @@ class CoordinatorTests(unittest.TestCase):
 
 
 class SetupCheckTests(unittest.TestCase):
-    """test_connection.py (SCAN-6, NFR-SEC-4): clear setup messages that never show a key.
+    """Checks that setup messages do not show keys.
 
     FakeAWS puts DUMMY_SECRET in every AWS error message, so these fail if a
     message ever passes AWS's text through to the user.
@@ -243,7 +243,7 @@ class ScanPageTests(unittest.TestCase):
 
 
 class SettingsPageTests(unittest.TestCase):
-    """The Check connection button on the Settings tab (SCAN-6, NFR-SEC-4)."""
+    """Tests the Check connection button on the Settings tab."""
 
     def setUp(self):
         import streamlit as st
@@ -334,7 +334,7 @@ def mixed_scan():
 
 
 class ResultsPageTests(unittest.TestCase):
-    """The Results tab in the real app (FR-UI-2): filters and the finding details panel."""
+    """Tests the Results tab filters and finding details."""
 
     def setUp(self):
         import streamlit as st

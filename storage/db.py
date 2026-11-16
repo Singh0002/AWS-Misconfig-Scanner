@@ -1,7 +1,6 @@
 """SQLite storage for CloudGuardian.
 
-The five tables come from Section 6 of the design document Scans are saved
-in the format from results.py. Credentials are never stored here.
+Scans use the format in results.py. Credentials are never stored here.
 
 Every function returns two things: the result and an error. If it worked the
 error is None. If it failed, the error is a dict with a message to show.
