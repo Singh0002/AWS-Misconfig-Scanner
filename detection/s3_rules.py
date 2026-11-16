@@ -9,7 +9,7 @@ PUBLIC_GROUPS = {ALL_USERS: "All Users", AUTHENTICATED_USERS: "Authenticated Use
 BLOCK_PUBLIC_ACCESS_FLAGS = ["BlockPublicAcls", "IgnorePublicAcls",
                              "BlockPublicPolicy", "RestrictPublicBuckets"]
 
-# rule_id -> issue text and severity for the finding
+# rule_id - issue text and severity for the finding
 RULE_INFO = {
     "s3_public_acl": ("Bucket ACL grants access to everyone", "High"),
     "s3_block_public_access": ("Block Public Access is not fully turned on", "High"),
