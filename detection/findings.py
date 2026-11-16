@@ -42,10 +42,10 @@ def to_user(record, errors):
     if error:
         user["errors"]["mfa_devices"] = error
     else:
-        # the collector only keeps a count, and the rule only checks the list isn't empty
+        # the collector only keeps a count, and the rule only checks the list isnt empty
         user["mfa_devices"] = ["device"] * record["mfa_devices"]["value"]["DeviceCount"]
 
-    # left out of the user when not collected, so the unused key rule says incomplete
+    # left out of the user when not collected, so the unused key rule states incomplete
     if "access_keys" in record:
         error = read_error(record, "access_keys", iam.SETTINGS, errors)
         if error:
@@ -65,7 +65,7 @@ def password_policy_input(collected):
             if error["operation"] == "get_account_password_policy":
                 return None, error["message"]
         return None, "unknown error"
-    # "missing" means the account has no password policy, which the rule fails
+    # "missing" means the account has no password policy, which indicates rule fails
     return setting["value"], None
 
 
@@ -101,7 +101,7 @@ def check_iam(scan, collected, selected_rules=None, account_summary=None, summar
     for record in collected["records"]:
         user = to_user(record, collected["errors"])
         add_results(scan, "IAM", iam_rules.check_user(user, selected_rules), iam_rules.RULE_INFO)
-    # root MFA and the password policy are for the whole account, so they run once
+    # root MFA and the password policy are for the whole account (run once)
     if selected_rules is None or "iam_root_mfa" in selected_rules:
         add_results(scan, "IAM", [iam_rules.check_root_mfa(account_summary, summary_error)], iam_rules.RULE_INFO)
     if selected_rules is None or "iam_password_policy" in selected_rules:
