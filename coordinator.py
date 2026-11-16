@@ -31,7 +31,7 @@ def run_scan(selected_services, selected_rules, on_progress, session=None):
 
     if "IAM" in selected_services:
         on_progress(total - 1, total, "Scanning IAM users...")
-        # root MFA comes from the account summary, not from a user
+        # root MFA comes from the account summary
         status, summary, code = read_setting(session.client("iam").get_account_summary)
         findings.check_iam(scan, iam.collect_iam(session), selected_rules, summary, code)
 
