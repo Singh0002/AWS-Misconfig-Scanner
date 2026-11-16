@@ -137,7 +137,7 @@ def explanations_html(scan):
 
 def incomplete_html(scan):
     """Checks that couldn't run, and what went wrong during the scan."""
-    incomplete = [c for c in scan["checks"] if c["status"] == "incomplete"]
+    incomplete = [check for check in scan["checks"] if check["status"] == "incomplete"]
     parts = ['<section class="incomplete">', "<h2>Incomplete checks and errors</h2>"]
     if not incomplete and not scan["errors"]:
         parts.append("<p>None. Every selected check ran.</p>")
@@ -149,15 +149,23 @@ def incomplete_html(scan):
         parts.append("<table>")
         parts.append("<tr><th>Service</th><th>Resource</th><th>Rule</th><th>Reason</th></tr>")
         for check in incomplete:
-            parts.append(f"<tr><td>{esc(check['service'])}</td><td>{esc(check['resource_id'])}</td>"
-                         f"<td>{esc(check['rule_id'])}</td><td>{esc(check['reason'])}</td></tr>")
+            parts.append(
+                f"<tr><td>{esc(check['service'])}</td>"
+                f"<td>{esc(check['resource_id'])}</td>"
+                f"<td>{esc(check['rule_id'])}</td>"
+                f"<td>{esc(check['reason'])}</td></tr>"
+            )
         parts.append("</table>")
     if scan["errors"]:
         parts.append("<table>")
         parts.append("<tr><th>Stage</th><th>Operation</th><th>Resource</th><th>Message</th></tr>")
         for error in scan["errors"]:
-            parts.append(f"<tr><td>{esc(error['stage'])}</td><td>{esc(error['operation'])}</td>"
-                         f"<td>{esc(error['resource_id'])}</td><td>{esc(error['message'])}</td></tr>")
+            parts.append(
+                f"<tr><td>{esc(error['stage'])}</td>"
+                f"<td>{esc(error['operation'])}</td>"
+                f"<td>{esc(error['resource_id'])}</td>"
+                f"<td>{esc(error['message'])}</td></tr>"
+            )
         parts.append("</table>")
     parts.append("</section>")
     return "\n".join(parts)
