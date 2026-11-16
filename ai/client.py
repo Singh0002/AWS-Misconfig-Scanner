@@ -55,7 +55,7 @@ REPLY_SCHEMA = {
 
 
 def key_file():
-    # same folder as the database, so it's outside the repo
+    # same folder as the database, so it'=s outside the repo
     return db.default_db_path().parent / "api_key.txt"
 
 
@@ -124,7 +124,7 @@ def ask(client, batch, model):
         # low effort keeps it fast, these are short answers
         output_config={"effort": "low", "format": {"type": "json_schema", "schema": REPLY_SCHEMA}},
     )
-    # a refusal or a cut off reply won't be valid JSON, so skip it
+    # a refusal or a cut off reply won't be valid JSON, so skip
     if response.stop_reason != "end_turn":
         return None
     for block in response.content:
@@ -156,7 +156,7 @@ def explain_scan(scan, api_key=None, model=None):
             try:
                 reply = ask(client, data, model or MODEL)
             except anthropic.APIError as error:
-                # only the error type, the message could have request details in it
+                # only the error type, the message may have request details in it
                 scan["errors"].append(results.make_error(scan_id, "AI", "messages.create", type(error).__name__))
         explanations.extend(formatter.parse_reply(reply, ids))
     return explanations
