@@ -55,7 +55,7 @@ REPLY_SCHEMA = {
 
 
 def key_file():
-    # same folder as the database, so it'=s outside the repo
+    # same folder as the database, so its outside the repo
     return db.default_db_path().parent / "api_key.txt"
 
 
