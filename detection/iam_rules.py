@@ -13,7 +13,7 @@ PASSWORD_REQUIREMENTS = ["RequireUppercaseCharacters", "RequireLowercaseCharacte
 
 MAX_UNUSED_DAYS = 90
 
-# rule_id -> issue text and severity for the finding
+# rule_id - issue text and severity for the finding
 RULE_INFO = {
     "iam_admin_wildcard": ("Policy allows every action on every resource", "High"),
     "iam_user_mfa": ("User has no MFA device", "High"),
@@ -153,7 +153,7 @@ def check_unused_access_keys(user, now=None):
                                reason="An access key has no creation or last used date.")
         days = (now - since).days
         if days > MAX_UNUSED_DAYS:
-            # only the last 4 characters, so the evidence never holds a whole key ID
+            # only the last 4 character so the evidence never holds a whole key ID
             stale.append({"key_ending": key.get("AccessKeyId", "")[-4:], "days_unused": days,
                           "never_used": key.get("LastUsedDate") is None})
 
