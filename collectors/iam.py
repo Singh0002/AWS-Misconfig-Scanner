@@ -1,5 +1,5 @@
 """Reads IAM users, policies, MFA, access keys, and the account password policy.
-Returns records and errors without changing AWS settings."""
+Returns records and errors without changing AWS settings"""
 
 
 from botocore.exceptions import BotoCoreError, ClientError
@@ -63,7 +63,7 @@ def get_inline_policies(iam,username):
     return policies
     
 def get_password_policy(iam):
-    # kept as AWS returns it (MinimumPasswordLength, RequireSymbols, ...)
+    # kept as AWS returns it (MinimumPasswordLength, RequireSymbols, etc...)
     return iam.get_account_password_policy()["PasswordPolicy"]
 
 
@@ -130,7 +130,7 @@ def collect_iam(aws_session):
             setting = helper(iam, us)
             record[field] = {"status": setting["status"], "value": setting["value"]}
 
-            # only this function records errors; the helpers just report status
+            # only this function records errors, the helpers just report status
             if setting["status"] == "failed":
                 errors.append({"operation": operation, "resource_id": us,
                                "message": setting["code"]})
