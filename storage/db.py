@@ -3,7 +3,7 @@
 Scans use the format in results.py. Credentials are never stored here.
 
 Every function returns two things: the result and an error. If it worked the
-error is None. If it failed, the error is a dict with a message to show.
+error is None. If it failed, the error is a dict with a message to show
 """
 
 import os
@@ -63,7 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_checks_scan_id ON checks (scan_id);
 CREATE INDEX IF NOT EXISTS idx_scan_errors_scan_id ON scan_errors (scan_id);
 """
 
-# The :names get filled in from the matching keys of each record.
+# The :names get filled in from the matching keys of each record
 INSERT_SCAN = """INSERT INTO scans VALUES
     (:scan_id, :account_id, :scan_time, :selected_services, :scan_status, :coverage_status)"""
 INSERT_CHECK = """INSERT INTO checks VALUES
@@ -91,7 +91,7 @@ def connect(db_path=None):
         db_path = default_db_path()
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")  # SQLite has this off by default
+    conn.execute("PRAGMA foreign_keys = ON")  # SQLite has this off by default (??)
     return conn
 
 
@@ -144,7 +144,7 @@ def save_explanations(scan_id, explanations, db_path=None):
     """
     conn = connect(db_path)
     try:
-        # Make sure every explanation is for a finding in this scan.
+        # Make sure every explanation is for a finding in this scan
         rows = conn.execute("""
             SELECT findings.finding_id FROM findings
             JOIN checks ON checks.check_id = findings.check_id
