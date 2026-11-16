@@ -111,7 +111,7 @@ def explanation_view(explanation):
             steps = []
         if text or steps:
             return {"state": "available", "text": text, "steps": [str(s) for s in steps], "message": None}
-        # marked available but empty, so treat it like the AI failed
+        # marked available but empty, so treat like the AI failed
         state = "unavailable"
 
     return {"state": state, "text": None, "steps": [],
