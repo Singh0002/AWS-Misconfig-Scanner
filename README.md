@@ -1,128 +1,144 @@
 # AWS Misconfiguration Scanner
 
-## Project Overview
-The AWS Misconfiguration Scanner is an AI-assisted security tool designed to identify configuration issues in selected AWS services. The first version of the project will focus on Amazon S3 and AWS IAM. The scanner will retrieve configuration information from an AWS account, compare it against predefined security rules, and flag configurations that may create security risks. AI will be used to help explain the findings and provide clearer information to the user.
+CloudGuardian is our senior project for finding common security issues in AWS configurations. It checks S3 and IAM settings against ten rules and shows the results in a local Streamlit app. We use AI to explain findings and suggest fixes. The scanner only reads AWS settings; it does not change them.
 
+## What it does
 
-## Features
-It will scan S3 configurations
-It will scan IAM configurations
-Check configurations against predefined rules 
-use ai api to explain detected findings 
-Results shown in streamlet interface 
-Downloadable html file
+- Scans S3, IAM, or both in one AWS account.
+- Shows passed and incomplete checks and findings with their severity.
+- Uses the Anthropic API to explain findings when AI explanations are turned on.
+- Saves scans locally and creates an HTML report you can open offline.
 
-
-
-## Technologies Used
-python
-boto3
-aws
-streamlit
-github
-ai api 
-
-## How It Works
-the user will first configure there aws credentials locally
-the aws boto3 will use those credentials to connect the a specfic aws account
-the boto3 will retrieve s3 and iam configuration information
-the configurations then will be scanned against predefined rules 
+The S3 checks cover public ACLs, Block Public Access, wildcard principals, versioning, and HTTPS. The IAM checks cover broad permissions, user and root MFA, password policy, and unused access keys. We do not scan other services or make fixes automatically.
 
 ## Setup
-You need Python 3.12 and git.
 
-1. Clone the repo and go into the folder
-```
-git clone https://github.com/Singh0002/AWS-Misconfig-Scanner.git
-cd AWS-Misconfig-Scanner
-```
+You need Python 3.12 and Git.
 
-2. Make a virtual environment and turn it on
-```
-python -m venv .venv
-.venv\Scripts\activate          # Windows
-source .venv/bin/activate       # Ubuntu
-```
+1. Clone the repository and open the folder:
 
-3. Install the packages
-```
-pip install -r requirements.txt
-```
+   ```bash
+   git clone https://github.com/Singh0002/AWS-Misconfig-Scanner.git
+   cd AWS-Misconfig-Scanner
+   ```
 
-4. Set up your AWS credentials (only needed for real scans). You need the AWS CLI installed for this. Use an account with read-only access. The scanner never changes anything in AWS.
-```
-aws configure
-```
-The AWS user needs the `SecurityAudit` policy (it's read only). If you don't have the AWS CLI you can make the files yourself. Put this in `C:\Users\<you>\.aws\credentials` (Windows) or `~/.aws/credentials` (Ubuntu):
-```
-[default]
-aws_access_key_id = your-key-id
-aws_secret_access_key = your-secret
-```
-and this in a file called `config` in the same folder:
-```
-[default]
-region = us-east-1
-```
+2. Create a virtual environment and activate it:
 
-5. Set your Anthropic API key (only needed for AI explanations). The easy way is to paste it on the Settings tab in the app. Tick "Remember this key on this computer" if you don't want to paste it every time. Or set it once like below. Don't put the key in the code or commit it.
-```
-set ANTHROPIC_API_KEY=your-key-here           # Windows (cmd)
-$env:ANTHROPIC_API_KEY="your-key-here"        # Windows (PowerShell)
-export ANTHROPIC_API_KEY=your-key-here        # Ubuntu
-```
+   ```bash
+   python -m venv .venv
+   ```
 
-6. Check your setup. This only reads from AWS and never prints keys. Add `--ai-call` to also make one tiny AI request that confirms your key and credits work.
-```
-python test_connection.py
-python test_connection.py --ai-call
-```
+   On Windows PowerShell:
+
+   ```powershell
+   .venv\Scripts\Activate.ps1
+   ```
+
+   On Windows Command Prompt:
+
+   ```cmd
+   .venv\Scripts\activate.bat
+   ```
+
+   On Ubuntu:
+
+   ```bash
+   source .venv/bin/activate
+   ```
+
+3. Install the packages:
+
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Set up AWS credentials for the account you want to scan. Use a read-only account with the `SecurityAudit` policy. If you have the AWS CLI, run:
+
+   ```bash
+   aws configure
+   ```
+
+   If you do not have the CLI, create a `credentials` file in `C:\Users\<you>\.aws\` on Windows or `~/.aws/` on Ubuntu:
+
+   ```ini
+   [default]
+   aws_access_key_id = your-key-id
+   aws_secret_access_key = your-secret
+   ```
+
+   Create a `config` file in the same folder:
+
+   ```ini
+   [default]
+   region = us-east-1
+   ```
+
+5. For AI explanations, paste your Anthropic API key into the Settings tab after starting the app. You can also set `ANTHROPIC_API_KEY` before starting it:
+
+   ```powershell
+   $env:ANTHROPIC_API_KEY="your-key-here"  # Windows PowerShell
+   ```
+
+   ```cmd
+   set ANTHROPIC_API_KEY=your-key-here  # Windows Command Prompt
+   ```
+
+   ```bash
+   export ANTHROPIC_API_KEY=your-key-here  # Ubuntu
+   ```
+
+   Do not put your key in the code or commit it to Git.
+
+6. Check your setup. The second command also makes a small AI request to test your key and credits:
+
+   ```bash
+   python test_connection.py
+   python test_connection.py --ai-call
+   ```
 
 ## Running the app
-```
+
+Start the app from the project folder:
+
+```bash
 streamlit run app.py
 ```
-It opens at http://localhost:8501. Pick S3, IAM or both and press Start scan. To run only some of the 10 checks, open "Choose specific checks". Finished scans save automatically and show up in Saved scans. When a scan finishes, or you open a saved one, it goes straight to the Results tab. On the Settings tab, Check connection tests your AWS credentials and S3 and IAM read access. If you've never set up AWS or an Anthropic key, the help buttons on the Settings tab walk you through it. Settings also has dark mode and a button color picker (these reset when the app restarts). Don't use the VS Code run button, it runs plain python and nothing will open. Press Ctrl+C in the terminal to stop it.
 
-## Database
-Saved scans go in a local SQLite file called `cloudguardian.db`. The app makes it and its tables the first time it runs.
+Open http://localhost:8501, select S3, IAM, or both, and start a scan. You can also choose specific checks. The Results tab shows the findings, and Saved scans lets you reopen past scans without running them again.
+
+The Settings tab has connection checks, setup help, AI model selection, dark mode, and button colors. The appearance settings reset when the app restarts. Press Ctrl+C in the terminal to stop the app.
+
+## AI explanations
+
+Turn on AI explanations on the Scan tab and select a model on the Settings tab. The app sends finding information to Anthropic and shows the explanation and suggested steps with each finding. The rules decide the results and severity.
+
+We remove fields with names containing `secret`, `token`, or `credential` and mask full AWS access key IDs before sending finding data. Do not rely on this to remove every kind of sensitive information. If a request fails or no key is set, the explanation is unavailable and the finding stays in the results. AI can make mistakes, so check the suggested steps before changing anything in AWS.
+
+A key pasted into Settings stays in memory unless you select "Remember this key on this computer". That option saves it in `api_key.txt` beside the database. Clear the option to delete the saved file.
+
+## Saved scans and reports
+
+The app creates a local SQLite database when it starts. The default locations are:
+
 - Windows: `%LOCALAPPDATA%\CloudGuardian\cloudguardian.db`
 - Ubuntu: `~/.local/share/cloudguardian/cloudguardian.db`
 
-You can set `CLOUDGUARDIAN_DB` to put it somewhere else. It has scan results in it so it's left out of Git. If you want to back it up, close the app first.
+Set `CLOUDGUARDIAN_DB` to use a different location. The database contains scan results and is not included in Git. Close the app before backing it up.
 
-## Results format
-All the modules pass results around in the same format, defined in `results.py`. Use its `make_check`, `make_finding`, `make_explanation` and `make_error` functions so the results can be saved straight to the database.
-
-## Explanations
-After a scan the app sends the findings to Anthropic and shows a short explanation and fix steps for each one on the Results tab. Click a finding to open it. They get saved with the scan, so they show up again when you open it from Saved scans.
-
-Paste your API key and pick a model (Opus, Sonnet or Haiku) on the Settings tab. The AI explanations switch is on the Scan tab. The key is only kept while the page is open, unless you tick "Remember this key on this computer". That saves it in `api_key.txt` in the same folder as the database (see Database above), not in the repo. Untick it to delete the file. You can also set `ANTHROPIC_API_KEY` like in Setup.
-
-Only the finding info gets sent, and anything that looks like a secret or an access key is taken out first. If there's no key, the request fails, or it takes over 30 seconds, the finding just says there's no explanation. The rule results and severity don't change either way.
-
-We tested 50 explanations on findings from simple to complicated and didn't get any hallucinations, but it can still happen, so double check the fix steps before changing anything in AWS. Opus gives the best explanations, then Sonnet, then Haiku.
-
-## Report
-After a scan, or after opening one from Saved scans, press Download report on the Results tab. You get one HTML file with the scan details, the findings, the explanations and fix steps, and any checks that couldn't run. It opens in any browser, even offline.
-
-## Filters
-The S3, IAM, High, Medium and Low buttons above the findings pick which ones are listed. A finding shows when both its service and its severity are picked. The counts at the top and the downloaded report always include every finding.
+On the Results tab, use the service and severity filters to change the findings shown. The counts and downloaded report still include all findings. Download report creates an HTML file with the scan details, findings, explanations, and incomplete checks.
 
 ## Tests
-```
+
+Run the automated tests from the project folder:
+
+```bash
 python -m unittest discover tests
 ```
-The tests in `test_live.py` use the real AWS test account and the Anthropic API, so they're skipped unless you set `CLOUDGUARDIAN_LIVE=1` first.
 
-## Project Scope
-CloudGuardian checks one AWS account at a time for 10 common S3 and IAM misconfigurations:
-- S3: public ACL grants, Block Public Access off, wildcard principal, versioning disabled, HTTPS not enforced
-- IAM: admin wildcards, users without MFA, root without MFA, weak password policy, access keys unused 90+ days
-It only reads settings and never changes anything in the account. It runs on your own computer and isn't hosted online.
-Not included: other AWS services (like EC2 or RDS), more than one account at a time, and fixing problems automatically. The AI suggests fixes, but you make the changes yourself.
+The live tests need a real AWS test account and an Anthropic API key. They are skipped unless `CLOUDGUARDIAN_LIVE=1` is set.
 
 ## Team
-- Ajay Singh: project manager
+
+- Ajay Singh, project manager
 - Martin Perez
 - Zach Kidwell
