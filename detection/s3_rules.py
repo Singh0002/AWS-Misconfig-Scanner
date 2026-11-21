@@ -1,4 +1,4 @@
-"""Checks S3 settings for five common misconfigurations."""
+"""Checks S3 settings for remaining five configs (other 5 are in iam)"""
 
 from detection.policy import as_list, has_condition, is_public_principal, statements
 
@@ -30,7 +30,7 @@ def make_result(rule_id, bucket, status, evidence=None, reason=None):
 
 
 def read_error(rule_id, bucket, setting):
-    """The incomplete result for a setting the collector couldn't read."""
+    """The incomplete result for a setting the collector could not read"""
     error = bucket.get("errors", {}).get(setting)
     if error is None and setting not in bucket:
         error = "not collected"
@@ -41,7 +41,7 @@ def read_error(rule_id, bucket, setting):
 
 
 def check_public_acl(bucket):
-    """Rule 1: no ACL grant to All Users or Authenticated Users."""
+    """Rule 1: no ACL grant"""
     incomplete = read_error("s3_public_acl", bucket, "acl")
     if incomplete:
         return incomplete
@@ -59,8 +59,7 @@ def check_public_acl(bucket):
 
 
 def check_block_public_access(bucket, account_block=None):
-    """Checks that all four public access blocks are on.
-    Each setting can come from the bucket or the account."""
+    """Checks that all four public access blocks are on"""
     incomplete = read_error("s3_block_public_access", bucket, "public_access_block")
     if incomplete:
         return incomplete
@@ -80,8 +79,7 @@ def check_block_public_access(bucket, account_block=None):
 
 
 def check_wildcard_principal(bucket):
-    """Checks for an unrestricted policy that allows public access.
-    Allow statements with NotPrincipal also count."""
+    """Checks for an unrestricted policy that allows public access"""
     incomplete = read_error("s3_wildcard_principal", bucket, "policy")
     if incomplete:
         return incomplete
@@ -102,7 +100,7 @@ def check_wildcard_principal(bucket):
 
 
 def check_versioning(bucket):
-    """Rule 4: versioning is Enabled. Suspended or never set fails."""
+    """Rule 4: versioning is Enabled"""
     incomplete = read_error("s3_versioning", bucket, "versioning")
     if incomplete:
         return incomplete
@@ -115,7 +113,7 @@ def check_versioning(bucket):
 
 
 def denies_insecure_transport(statement):
-    """True if the statement denies everyone all S3 actions over plain HTTP."""
+    """True if the statement denies everyone all S3 actions over plain HTTP prot"""
     if statement.get("Effect") != "Deny" or not is_public_principal(statement.get("Principal")):
         return False
 
@@ -140,7 +138,7 @@ def denies_insecure_transport(statement):
 
 
 def check_https_only(bucket):
-    """Rule 5: the bucket policy denies requests that don't use HTTPS."""
+    """Rule 5: the bucket policy denies requests that do not use HTTP."""
     incomplete = read_error("s3_https_only", bucket, "policy")
     if incomplete:
         return incomplete
@@ -164,7 +162,7 @@ RULES = {
 
 
 def check_bucket(bucket, selected_rules=None, account_block=None):
-    """Runs the selected S3 rules (all of them by default) on one bucket."""
+    """Runs the selected S3 rules (all of them enabled by default) on one bucket"""
     results = []
     for rule_id, rule in RULES.items():
         if selected_rules is not None and rule_id not in selected_rules:
