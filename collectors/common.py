@@ -2,7 +2,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 
 def read_setting(call, missing_codes=()):
-    """Runs one read-only AWS call. Returns (status, value, error_code)."""
+    """read only aws call, returns (status, value, error_code)"""
     try:
         return "available", call(), None
     except ClientError as e:
@@ -15,7 +15,7 @@ def read_setting(call, missing_codes=()):
 
 
 def error_code(e):
-    """Safe text for an error record: the code or type only however never the message."""
+    """Safe text for an error record: the code or type only however never the message"""
     if isinstance(e, ClientError):
         return e.response.get("Error", {}).get("Code", "Unknown")
     return type(e).__name__
