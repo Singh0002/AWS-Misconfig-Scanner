@@ -1,5 +1,9 @@
 """Checks AWS credentials, service access, and the AI key.
-Run with --ai-call to test the AI connection."""
+Run with --ai-call to test AI"""
+
+""These are not rigorously tested to work. Especially the model selection
+And API zero balance part, as we did not want to exhaust the money we had
+each put in""
 
 import os
 import sys
@@ -33,7 +37,7 @@ def make_session(profile=None, region=None):
     # profile=None lets boto3 use the default profile or environment variables
     session = boto3.Session(profile_name=profile, region_name=region)
     if session.region_name is None:
-        # S3 and IAM don't depend on region, but boto3 wants one set
+        # S3 and IAM do nott depend on region, but boto3 wants one set
         session = boto3.Session(profile_name=profile, region_name="us-east-1")
     return session
 
@@ -66,7 +70,7 @@ def check_iam_access(session):
 def check_ai_key(make_request=False):
     """Checks the Anthropic key is set. make_request=True also sends one tiny
     request, which uses a very small amount of credit, to prove the key and
-    credits really work."""
+    credits really work"""
     key = os.environ.get("ANTHROPIC_API_KEY")
     if not key:
         return False, "No ANTHROPIC_API_KEY set. AI explanations will be off."
