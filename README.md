@@ -44,7 +44,6 @@ A key pasted into Settings stays in memory unless you check "Remember this key o
 The app saves scans in a local SQLite database:
 
 - Windows: `%LOCALAPPDATA%\CloudGuardian\cloudguardian.db`
-- Ubuntu: `~/.local/share/cloudguardian/cloudguardian.db`
 
 Set `CLOUDGUARDIAN_DB` to use a different location. The database holds scan results and is left out of Git. Close the app before backing it up.
 
