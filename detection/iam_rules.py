@@ -1,4 +1,4 @@
-"""Checks IAM settings for five common misconfigurations."""
+"""Checks IAM settings for five common misconfigurations (other 5 s3)"""
 
 from datetime import datetime, timezone
 
@@ -13,7 +13,7 @@ PASSWORD_REQUIREMENTS = ["RequireUppercaseCharacters", "RequireLowercaseCharacte
 
 MAX_UNUSED_DAYS = 90
 
-# rule_id - issue text and severity for the finding
+# rule_id : issue text and severity for the finding
 RULE_INFO = {
     "iam_admin_wildcard": ("Policy allows every action on every resource", "High"),
     "iam_user_mfa": ("User has no MFA device", "High"),
@@ -34,7 +34,7 @@ def make_result(rule_id, resource_id, status, evidence=None, reason=None):
 
 
 def read_error(rule_id, user, field):
-    """The incomplete result for user data the collector couldn't read."""
+    """The incomplete result for user data the collector couldn't read field"""
     error = user.get("errors", {}).get(field)
     if error is None and field not in user:
         error = "not collected"
@@ -45,7 +45,7 @@ def read_error(rule_id, user, field):
 
 
 def is_admin_statement(statement):
-    """Allow on every action ("*") for every resource ("*")."""
+    """Allow on every action ("*") for every resource per ("*")"""
     if statement.get("Effect") != "Allow":
         return False
     actions = set(as_list(statement.get("Action")))
@@ -53,8 +53,8 @@ def is_admin_statement(statement):
 
 
 def check_admin_wildcard(user):
-    """Checks for full access to all resources.
-    Conditional access is listed in the evidence but does not fail."""
+    """Checks for full access to all resources,
+    Conditional access is listed in the evidence but does not fail"""
     incomplete = read_error("iam_admin_wildcard", user, "policies")
     if incomplete:
         return incomplete
@@ -97,8 +97,7 @@ def check_user_mfa(user):
 
 
 def check_root_mfa(account_summary, error=None):
-    """Checks root MFA in the account summary.
-    An unreadable summary gives an incomplete result."""
+    """Checks root MFA in the account summary,An unreadable summary gives an incomplete result"""
     if error is not None or account_summary is None:
         reason = f"Couldn't read the account summary ({error or 'not collected'})."
         return make_result("iam_root_mfa", "root", "incomplete", reason=reason)
@@ -114,8 +113,7 @@ def check_root_mfa(account_summary, error=None):
 
 
 def check_password_policy(policy, error=None):
-    """Checks password length and required character types.
-    A missing policy fails; an unreadable policy is incomplete."""
+    """Checks password length and required character types"""
     if error is not None:
         return make_result("iam_password_policy", "account", "incomplete",
                            reason=f"Couldn't read the password policy ({error}).")
@@ -136,8 +134,7 @@ def check_password_policy(policy, error=None):
 
 
 def check_unused_access_keys(user, now=None):
-    """Checks active keys for more than 90 days without use.
-    Never-used keys are checked from their creation date."""
+    """Checks active keys for more than 90 days without use"""
     incomplete = read_error("iam_unused_access_key", user, "access_keys")
     if incomplete:
         return incomplete
@@ -170,7 +167,7 @@ USER_RULES = {
 
 
 def check_user(user, selected_rules=None):
-    """Runs the selected per-user rules (all of them by default) on one user."""
+    """Runs the selected per-user rules (all of them are enabled by default) on one user"""
     results = []
     for rule_id, rule in USER_RULES.items():
         if selected_rules is None or rule_id in selected_rules:
