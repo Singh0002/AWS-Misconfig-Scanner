@@ -1,4 +1,4 @@
-"""Checks AI replies and matches explanations to findings."""
+"""Checks AI replies and matches explanations to findings"""
 
 import json
 
@@ -6,7 +6,7 @@ import results
 
 
 def is_valid(item):
-    """True if one item from the reply has everything we need."""
+    """True if one item from the reply has everything we need"""
     if not isinstance(item, dict) or not isinstance(item.get("risk_explanation"), str):
         return False
     if item["risk_explanation"].strip() == "" or not isinstance(item.get("recommended_steps"), list):
