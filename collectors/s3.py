@@ -3,8 +3,7 @@ from collectors.common import read_setting, error_code
 import json
 
 
-"""Reads bucket ACLs, public access settings, versioning, and policies.
-Returns records and errors without changing AWS settings."""
+"""read bucket ACLs, public access settings, versioning, and policies"""
 
 def list_buckets(s3):
     bucket_names = []
