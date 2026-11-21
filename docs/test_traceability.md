@@ -3,6 +3,11 @@
 This maps our requirements to the tests that check them. All the tests use the fake AWS account and fake AI in `tests/fakes.py`.
 All the tests are complete, some of which were completed informally with the help of friends (acceptance testing).
 
+Not included in the table is test_connection.py
+The details there were much harder for us to individually verify (see that file)
+Though fake tests are still there. Regardless, the models always worked as expected
+In our testing.
+
 Run them from the project folder:
 
 python -m unittest discover tests
