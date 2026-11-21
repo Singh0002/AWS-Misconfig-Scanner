@@ -1,10 +1,11 @@
 # CloudGuardian test coverage
 
 This maps our requirements to the tests that check them. All the tests use the fake AWS account and fake AI in `tests/fakes.py`.
+All the tests are complete, some of which were completed informally with the help of friends (acceptance testing).
 
 Run them from the project folder:
 
-    python -m unittest discover tests
+python -m unittest discover tests
 
 As of 11/8/2026: 138 tests, all passing. The 2 live tests are skipped unless `CLOUDGUARDIAN_LIVE=1` is set, because they need our real AWS test account and an Anthropic key.
 
