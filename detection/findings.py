@@ -1,4 +1,4 @@
-"""Runs the rules on collected settings and builds checks and findings."""
+"""runs the rules on collected settings and builds checks and findings"""
 
 import results
 from collectors import iam, s3
@@ -6,7 +6,7 @@ from detection import iam_rules, s3_rules
 
 
 def read_error(record, field, settings, errors):
-    """The error code if the collector couldn't read this setting, otherwise None."""
+    """The error code if the collector cant read this setting, otherwise None."""
     if record[field]["status"] != "failed":
         return None
     for name, helper, operation in settings:
@@ -19,7 +19,7 @@ def read_error(record, field, settings, errors):
 def to_bucket(record, errors):
     bucket = {"name": record["resource_id"], "errors": {}}
     for field, helper, operation in s3.SETTINGS:
-        # "missing" settings are None, which the rules read as "not set"
+        # 'missing' settings are None, which the rules read as "not set"
         bucket[field] = record[field]["value"]
         error = read_error(record, field, s3.SETTINGS, errors)
         if error:
@@ -29,7 +29,7 @@ def to_bucket(record, errors):
 
 def to_user(record, errors):
     user = {"name": record["resource_id"], "policies": [], "mfa_devices": [], "errors": {}}
-    # the admin rule wants inline and attached policies in one list
+    # the admin rule wants inline and attached policies in singular list
     for field in ["inline_policies", "attached_policies"]:
         error = read_error(record, field, iam.SETTINGS, errors)
         if error:
@@ -65,7 +65,7 @@ def password_policy_input(collected):
             if error["operation"] == "get_account_password_policy":
                 return None, error["message"]
         return None, "unknown error"
-    # "missing" means the account has no password policy, which indicates rule fails
+
     return setting["value"], None
 
 
