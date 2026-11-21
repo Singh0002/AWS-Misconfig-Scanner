@@ -1,5 +1,5 @@
 """Reads IAM users, policies, MFA, access keys, and the account password policy.
-Returns records and errors without changing AWS settings"""
+Returns records and errors (no changing AWS settings a)"""
 
 
 from botocore.exceptions import BotoCoreError, ClientError
@@ -122,7 +122,9 @@ def collect_iam(aws_session):
         return {"records": [], "errors": errors, "password_policy": password_policy}
             
              
-             
+
+
+    
     for us in usernames:
         record = {"service": "IAM", "resource_id": us}
         
