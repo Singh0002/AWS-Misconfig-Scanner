@@ -1,9 +1,9 @@
 """Checks AWS credentials, service access, and the AI key.
 Run with --ai-call to test AI"""
 
-""These are not rigorously tested to work. Especially the model selection
+"""These are not rigorously tested to work. Especially the model selection
 And API zero balance part, as we did not want to exhaust the money we had
-each put in""
+each put in"""
 
 import os
 import sys
