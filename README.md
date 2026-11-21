@@ -61,6 +61,6 @@ The live tests need a real AWS test account and an Anthropic API key. They are s
 
 ## Team
 
-- Ajay Singh, project manager, front-end, S3/IAM
+- Ajay Singh, project manager, front-end, S3/IAM, HTML report
 - Martin Perez, S3/IAM collectors
-- Zach Kidwell, front-end design, presentations, AI
+- Zach Kidwell, front-end design, presentations, AI integration
