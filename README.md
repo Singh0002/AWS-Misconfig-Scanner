@@ -11,9 +11,7 @@ CloudGuardian is our senior project for finding security issues in AWS settings.
 
 ## Setup
 
-You need Python 3.12 and Git
-
-1. Running:
+Running:
 
 Install the packages:
 
