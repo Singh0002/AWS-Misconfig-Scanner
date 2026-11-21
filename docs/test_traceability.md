@@ -5,7 +5,8 @@ All the tests are complete, some of which were completed informally with the hel
 
 Not included in the table is test_connection.py
 The details there were much harder for us to individually verify (see that file)
-Though fake tests are still there. Regardless, the models always worked as expected
+Though fake tests are still there, we are far less confident in those tests compared to the others. 
+Regardless, the models always worked as expected
 In our testing.
 
 Run them from the project folder:
