@@ -1,5 +1,4 @@
-"""Gets AI explanations and fix steps for scan findings.
-The AI does not change the findings or their severity."""
+"""Gets AI explanations and fix steps for scan findings"""
 
 import json
 import os
@@ -13,6 +12,7 @@ from finding_details import find_check
 from storage import db
 
 # used when no model is picked in Settings. ANTHROPIC_MODEL can change it
+# however, we have not tested model changing extensively.
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5")
 TIMEOUT_SECONDS = 30
 MAX_RETRIES = 1
@@ -79,7 +79,7 @@ def forget_key():
 
 
 def remove_secrets(value):
-    """Drops secret-looking fields and blanks out any whole access key ID."""
+    """Drops secret-looking fields and blanks out any whole access key ID"""
     if isinstance(value, dict):
         cleaned = {}
         for key in value:
@@ -115,7 +115,7 @@ def finding_data(scan, finding):
 
 
 def ask(client, batch, model):
-    """Sends one batch of findings. Returns the reply text, or None if there isn't one."""
+    """Sends one batch of findings Returns the reply text, or None if there isn't one."""
     response = client.messages.create(
         model=model,
         max_tokens=8000,
