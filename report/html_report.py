@@ -1,5 +1,5 @@
 """Builds an HTML report from a new or saved scan.
-Escapes scan data before adding it to the page."""
+Escapes scan data before adding it to the page"""
 
 import html
 import json
@@ -10,7 +10,7 @@ SEVERITY_ORDER = ["High", "Medium", "Low"]
 
 
 def esc(value):
-    """Makes any value safe to put inside HTML text or an attribute. None -> ""."""
+    """Makes any value safe to put inside HTML text or an attribute. None means ""."""
     if value is None:
         return ""
     return html.escape(str(value), quote=True)
@@ -190,7 +190,7 @@ footer { margin-top: 40px; font-size: 0.9em; }
 
 
 def build_report(scan):
-    """Builds the report as one HTML page."""
+    """Builds the report as single html page"""
     meta = scan["metadata"]
     title = "CloudGuardian report " + format_time(meta["scan_time"])
     return "\n".join([
@@ -212,7 +212,7 @@ def build_report(scan):
         explanations_html(scan),
         incomplete_html(scan),
         "<footer>CloudGuardian only reads AWS settings and never changes anything. "
-        "Findings come from the rules; AI explanations are advice to help fix them.</footer>",
+        "Findings come from the rules, AI explanations are advice to help fix them.</footer>",
         "</body>",
         "</html>",
     ])
