@@ -288,6 +288,8 @@ if st.session_state.pop("go_to_results", False):
 scan_tab, results_tab, saved_tab, settings_tab = st.tabs(TABS, key="page_tab", on_change="rerun")
 
 # switching tabs reruns the page and would restart a running scan, so lock the tabs
+# further, we noticed anthropic likes to start responding and then rescinds it
+# to change the response fully. if we did not lock it, it could show that old message
 if "progress" in st.session_state and not scan_progress.can_start(st.session_state.progress):
     st.html("<style>.st-key-page_tab [role='tablist'] {pointer-events: none; opacity: 0.5;}</style>")
 
