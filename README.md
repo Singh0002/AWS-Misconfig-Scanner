@@ -37,8 +37,7 @@ Turn on AI explanations on the Scan tab and pick a model in Settings. The app se
 
 Before sending findings, we remove fields named with `secret`, `token`, or `credential` and mask full AWS access key IDs. This does not catch every kind of sensitive information. If a request fails or there is no key, the finding still shows without an explanation. 
 
-A key pasted into Settings stays in memory unless you check "Remember this key on this computer". That saves it in `api_key.txt` beside the database. Uncheck it to delete the file. This doesn't go anywhere except your computer.
-
+A key pasted into Settings stays in memory unless you check "Remember this key on this computer". That saves it in `api_key.txt` beside the database. Uncheck it to delete the file
 ## Saved scans and reports
 
 The app saves scans in a local SQLite database:
