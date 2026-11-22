@@ -88,6 +88,8 @@ class ReplyTests(unittest.TestCase):
                          ["Open the AWS console", "Turn the setting on"])
 
     def test_unknown_finding_id_is_ignored(self):
+        # A reply may include an ID we did not send. We should not attach
+        # that explanation to a different finding.
         explanations = explain(make_scan(1), FakeAI(reply(item("made-up-id"))))
         self.assertEqual(statuses(explanations), ["unavailable"])
         self.assertNotIn("made-up-id", [e["finding_id"] for e in explanations])
@@ -108,6 +110,8 @@ class ReplyTests(unittest.TestCase):
         self.assertEqual(statuses(explain(scan, FakeAI(broken))), ["unavailable"] * 3)
 
     def test_one_finding_left_out_of_the_reply(self):
+        # If the AI skips one finding, the other reply can still be useful.
+        # Only the missing explanation should show as unavailable.
         scan = make_scan()
         first = scan["findings"][0]["finding_id"]
         self.assertEqual(statuses(explain(scan, FakeAI(reply(item(first))))), ["available", "unavailable"])

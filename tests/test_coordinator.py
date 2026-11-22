@@ -188,7 +188,8 @@ class ScanPageTests(unittest.TestCase):
             return results.new_scan(services)
 
         self.click_start(fake_run_scan)
-        # click Start once, then the page reruns a few more times on its own
+        # Streamlit reruns the page after a scan. If the request stays in
+        # session state, one click could start the same scan again.
         with mock.patch.object(coordinator, "run_scan", fake_run_scan):
             self.at.run()
             self.at.run()

@@ -45,7 +45,7 @@ def read_error(rule_id, user, field):
 
 
 def is_admin_statement(statement):
-    """Allow on every action ("*") for every resource per ("*")"""
+    """Allow on every action ("*") for every resource ("*")"""
     if statement.get("Effect") != "Allow":
         return False
     actions = set(as_list(statement.get("Action")))
@@ -97,7 +97,7 @@ def check_user_mfa(user):
 
 
 def check_root_mfa(account_summary, error=None):
-    """Checks root MFA in the account summary,An unreadable summary gives an incomplete result"""
+    """Checks root MFA in the account summary, An unreadable summary gives an incomplete result"""
     if error is not None or account_summary is None:
         reason = f"Couldn't read the account summary ({error or 'not collected'})."
         return make_result("iam_root_mfa", "root", "incomplete", reason=reason)

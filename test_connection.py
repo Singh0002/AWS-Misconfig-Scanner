@@ -37,7 +37,7 @@ def make_session(profile=None, region=None):
     # profile=None lets boto3 use the default profile or environment variables
     session = boto3.Session(profile_name=profile, region_name=region)
     if session.region_name is None:
-        # S3 and IAM do nott depend on region, but boto3 wants one set
+        # S3 and IAM do not depend on region, but boto3 wants one set
         session = boto3.Session(profile_name=profile, region_name="us-east-1")
     return session
 

@@ -1,5 +1,5 @@
 """Reads IAM users, policies, MFA, access keys, and the account password policy.
-Returns records and errors (no changing AWS settings a)"""
+Returns records and errors (no changing AWS settings)"""
 
 
 from botocore.exceptions import BotoCoreError, ClientError

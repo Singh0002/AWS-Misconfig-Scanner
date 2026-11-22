@@ -11,13 +11,38 @@ CloudGuardian is our senior project for finding security issues in AWS settings.
 
 ## Setup
 
-Running:
+1. Extract the ZIP and open the extracted folder in a terminal. You need Python 3.12.
 
-Install the packages:
+2. Make a virtual environment:
 
    ```bash
-   pip install -r requirements.txt
+   python -m venv .venv
    ```
+
+   On Windows PowerShell, turn it on with:
+
+   ```powershell
+   .venv\Scripts\Activate.ps1
+   ```
+
+   On Windows Command Prompt, use `.venv\Scripts\activate.bat` instead.
+   On macOS or Linux, use `source .venv/bin/activate`.
+
+3. Install the packages:
+
+   ```bash
+   python -m pip install -r requirements.txt
+   ```
+
+4. Set up AWS credentials for the account you want to scan. Use a read-only
+   user with the `SecurityAudit` policy. Install the AWS CLI, run `aws configure`,
+   and enter the access key, secret key, and region. Do not share your keys.
+
+5. For AI explanations, paste an Anthropic API key into Settings after you start
+   the app. The scan works without it, but it will not have AI explanations.
+
+Settings has help for AWS and the Anthropic key. You can also run
+`python test_connection.py` to check your setup.
 
 ## Running the app
 

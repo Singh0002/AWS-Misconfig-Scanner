@@ -49,6 +49,8 @@ class ReportContentTests(unittest.TestCase):
 
 class ReportSafetyTests(unittest.TestCase):
     def test_html_in_names_and_ai_text_is_escaped(self):
+        # A bucket name or AI reply can contain HTML. It should show as text
+        # in the report instead of running when someone opens it.
         scan = sample_scan(resource="<script>alert(1)</script>",
                            explanation_text='<img src=x onerror="alert(2)">')
         report = build_report(scan)

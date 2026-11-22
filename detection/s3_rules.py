@@ -113,7 +113,7 @@ def check_versioning(bucket):
 
 
 def denies_insecure_transport(statement):
-    """True if the statement denies everyone all S3 actions over plain HTTP prot"""
+    """True if the statement denies everyone all S3 actions over plain HTTP"""
     if statement.get("Effect") != "Deny" or not is_public_principal(statement.get("Principal")):
         return False
 
@@ -138,7 +138,7 @@ def denies_insecure_transport(statement):
 
 
 def check_https_only(bucket):
-    """Rule 5: the bucket policy denies requests that do not use HTTP."""
+    """Rule 5: the bucket policy denies requests that do not use HTTPS."""
     incomplete = read_error("s3_https_only", bucket, "policy")
     if incomplete:
         return incomplete
