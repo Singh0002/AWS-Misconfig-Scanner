@@ -1,5 +1,4 @@
-"""Gets AI explanations and fix steps for scan findings.
-The AI does not change the findings or their severity."""
+"""Gets AI explanations and fix steps for scan findings."""
 
 import json
 import os
