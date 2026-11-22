@@ -1,6 +1,6 @@
 [theme]
 base = "light"
-# AWS Orange for buttons and highlights, AWS Dark Slate for text
+# AWS Orange for buttons and highlights and AWS Dark Slate for text
 primaryColor = "#FF9900"
 textColor = "#252F3E"
 backgroundColor = "#F6F4F0"
