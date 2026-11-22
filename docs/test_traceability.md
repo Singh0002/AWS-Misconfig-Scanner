@@ -3,7 +3,10 @@
 This maps our requirements to the tests that check them. All the tests use the fake AWS account and fake AI in `tests/fakes.py`.
 All the tests are complete, some of which were completed informally with the help of friends (acceptance testing).
 
-Not included in the table is test_connection.py. These include tests which were outside the scope of our test plan.
+There are quite a few tests that we completed. Even per our planning, this may have been a bit much for the project size, but honestly it did make development easy.
+If development is pursued in this project beyond this semester, I think the tests will prove to be more useful!
+
+Not included in the table is test_connection.py. These include tests which were outside the scope of our original test plan.
 Like, model selection, API Balance running out ($0), etc. The tests in test_connection.py have not been tested as rigorously.
 
 Run them from the project folder:
