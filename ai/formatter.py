@@ -26,7 +26,7 @@ def parse_reply(text, finding_ids):
     if not isinstance(items, list):
         items = []
 
-    # finding_id means the item from the reply
+    # match each reply to its finding ID
     matched = {}
     for item in items:
         if is_valid(item) and item.get("finding_id") in finding_ids:

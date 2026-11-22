@@ -41,7 +41,7 @@ class StorageTests(unittest.TestCase):
     def test_saved_scan_loads_back_the_same(self):
         scan = sample_scan()
         scan_id = self.save(scan)
-        # load_scan opens its own new connection, like after a restart
+        # load from a new connection, like reopening the app
         loaded, error = db.load_scan(scan_id, self.path)
         self.assertIsNone(error)
         self.assertEqual(loaded, scan)
@@ -87,7 +87,7 @@ class StorageTests(unittest.TestCase):
         self.save(second)
         ok, error = db.delete_scan(first["metadata"]["scan_id"], self.path)
         self.assertTrue(ok, error)
-        # its checks, findings, explanations and errors are gone too
+        # its checks, findings, explanations and errors should be gone
         self.assertNotIn(first["metadata"]["scan_id"], self.all_rows())
         loaded, error = db.load_scan(second["metadata"]["scan_id"], self.path)
         self.assertEqual(loaded, second)
@@ -157,7 +157,7 @@ class StorageTests(unittest.TestCase):
         self.assertEqual(len(scans), 1)
 
     def test_dummy_credentials_never_reach_the_database(self):
-        # a real scan where AWS errors carry a secret and users have whole key IDs
+        # fake AWS errors contain a secret and the users have whole key IDs
         aws = FakeAWS(buckets=[bad_bucket("b1")], users=[bad_user("u1")],
                       fail={"get_bucket_versioning": "AccessDenied"})
         scan = coordinator.run_scan(["S3", "IAM"], None, lambda *args: None, FakeSession(aws))

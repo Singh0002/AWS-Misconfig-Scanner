@@ -109,7 +109,8 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("get_bucket_policy", build_report(loaded))
 
     def test_ai_outage_keeps_the_findings(self):
-        # the scan is saved before the AI call, so an outage should not lose the findings
+        # the scan is saved before the AI call
+        # an AI outage must not remove the findings
         aws = FakeAWS(buckets=[bad_bucket("b1")])
         outage = FakeAI(error=anthropic.APIConnectionError(request=REQUEST))
         scan, loaded = self.full_workflow(aws, ["S3"], outage)
@@ -130,7 +131,7 @@ class WorkflowTests(unittest.TestCase):
         self.full_workflow(aws, fake_ai=fake_ai)
         for call in aws.calls:
             self.assertTrue(call.startswith(("get_", "list_")), call)
-        # the AI gets no tools, so its steps are only text for the user
+        # the AI steps are text for the user, not calls to AWS
         for request in fake_ai.requests:
             self.assertNotIn("tools", request)
 
@@ -148,8 +149,7 @@ class AppWorkflowTests(unittest.TestCase):
         import streamlit as st
         from streamlit.testing.v1 import AppTest
 
-        # the app only makes its tables once per run of Python, so make it redo
-        # that for this test's new database
+        # clear the cached setup for this test's new database
         st.cache_resource.clear()
         self.tmp = tempfile.TemporaryDirectory()
         self.path = os.path.join(self.tmp.name, "test.db")
@@ -181,8 +181,8 @@ class AppWorkflowTests(unittest.TestCase):
         self.assertFalse(self.download_button().proto.disabled)
 
     def test_failed_save_is_reported_and_results_stay(self):
-        # the scan finished even though the database was locked
-        # the user should still be able to see and download the results
+        # the scan finished but the database was locked
+        # the user still needs the results and report
         failed = (False, {"stage": "storage", "operation": "save_scan", "resource_id": None,
                           "message": "database is locked"})
         with mock.patch.object(db, "save_scan", return_value=failed):

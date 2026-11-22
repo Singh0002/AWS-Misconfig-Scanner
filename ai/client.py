@@ -16,7 +16,7 @@ from storage import db
 MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-opus-5-5")
 TIMEOUT_SECONDS = 30
 MAX_RETRIES = 1
-# a few findings per request so one request doesn't go past the timeout
+# send a few findings at a time to stay within the timeout
 BATCH_SIZE = 5
 
 # evidence fields with these words in the name are never sent
@@ -24,9 +24,8 @@ SECRET_WORDS = ["secret", "token", "credential"]
 # a whole access key ID is AKIA or ASIA plus 16 letters and numbers
 ACCESS_KEY_ID = re.compile(r"\b(AKIA|ASIA)[A-Z0-9]{16}\b")
 
-# included in the prompt is a tactic to avoid prompt injection.
-# we have not tested prompt injecion, but we suspect
-# anthropic models would not be prone to this
+# the prompt tells the model to ignore instructions in finding data
+# we have not tested this against prompt injection
 INSTRUCTIONS = """You explain AWS security findings to an AWS administrator.
 
 Each finding comes from a rule that already decided it failed. Don't argue
@@ -60,7 +59,7 @@ REPLY_SCHEMA = {
 
 
 def key_file():
-    # same folder as the database, so it's outside the repo
+    # keep the key file next to the database, outside the repo
     return db.default_db_path().parent / "api_key.txt"
 
 
@@ -126,10 +125,10 @@ def ask(client, batch, model):
         max_tokens=8000,
         system=INSTRUCTIONS,
         messages=[{"role": "user", "content": json.dumps(batch, indent=1)}],
-        # low effort keeps it fast, these are short answers
+        # low effort for these short answers
         output_config={"effort": "low", "format": {"type": "json_schema", "schema": REPLY_SCHEMA}},
     )
-    # a refusal or a cut off reply won't be valid JSON, so skip it
+    # skip replies that were refused or cut off
     if response.stop_reason != "end_turn":
         return None
     for block in response.content:
@@ -161,7 +160,8 @@ def explain_scan(scan, api_key=None, model=None):
             try:
                 reply = ask(client, data, model or MODEL)
             except anthropic.APIError as error:
-                # only the error type, the message could have request details in it
+                # the error message could have request details in it
+                # only record the error type
                 scan["errors"].append(results.make_error(scan_id, "AI", "messages.create", type(error).__name__))
         explanations.extend(formatter.parse_reply(reply, ids))
     return explanations
