@@ -181,8 +181,8 @@ class FindingTests(unittest.TestCase):
         return scan
 
     def test_failed_checks_make_findings_with_the_right_details(self):
-        # IAM scans crashed when collector fields did not match the rules.
-        # This checks that collected settings make the expected findings.
+        # IAM scans crashed when the collector fields did not match the rules
+        # this checks that the collected settings make findings
         scan = self.scan_everything()
         rule_info = dict(s3_rules.RULE_INFO, **iam_rules.RULE_INFO)
         self.assertEqual(len(scan["findings"]), 10)
@@ -241,15 +241,14 @@ class PolicyEdgeCaseTests(unittest.TestCase):
         self.assertEqual(self.status("s3_https_only", bucket(policy=json.dumps(https_policy("b1")))), "pass")
 
     def test_log_delivery_group_is_not_public(self):
-        # S3 uses this group to deliver logs. It is not the public group,
-        # so treating every group grant as public would give a false finding.
+        # the log delivery group is not public, so it should not make a finding
         log_delivery = [{"Grantee": {"Type": "Group", "URI": "http://acs.amazonaws.com/groups/s3/LogDelivery"},
                          "Permission": "WRITE"}]
         self.assertEqual(self.status("s3_public_acl", bucket(acl={"Grants": log_delivery})), "pass")
 
     def test_https_statements_that_only_partly_protect_fail(self):
-        # A deny on just the bucket does not cover its objects. They could
-        # still be accessed over HTTP even though the bucket is covered.
+        # these can look like HTTPS rules but still leave HTTP access open
+        # for example, a deny on the bucket alone does not cover its objects
         partial = {
             "allows instead of denies": dict(HTTPS_STATEMENT, Effect="Allow"),
             "only blocks one action": dict(HTTPS_STATEMENT, Action="s3:PutObject"),
@@ -284,8 +283,8 @@ class PolicyEdgeCaseTests(unittest.TestCase):
         self.assertEqual(iam_rules.check_admin_wildcard(user(policies=policies))["status"], "fail")
 
     def test_conditional_admin_passes_but_is_still_reported(self):
-        # This policy limits access by IP, so this rule does not fail it.
-        # We still keep it in the evidence for the user to review.
+        # the IP condition limits access, so this rule passes
+        # we still show the policy in the evidence for the user to review
         conditional = with_statement({"Effect": "Allow", "Action": "*", "Resource": "*",
                                       "Condition": {"IpAddress": {"aws:SourceIp": "203.0.113.0/24"}}})
         result = iam_rules.check_admin_wildcard(user(policies=[{"name": "OfficeAdmin", "document": conditional}]))

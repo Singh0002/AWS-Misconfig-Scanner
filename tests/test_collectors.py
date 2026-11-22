@@ -50,8 +50,8 @@ class NormalResponseTests(unittest.TestCase):
 
 class PagingTests(unittest.TestCase):
     def test_every_page_of_buckets_and_users_is_read(self):
-        # AWS can split a list across pages. Reading only the first page
-        # would leave buckets and users out of the scan.
+        # one item per page, so 3 buckets come back as 3 pages
+        # if we only read the first page, the scan misses the rest
         aws = FakeAWS(buckets=[good_bucket("b1"), good_bucket("b2"), good_bucket("b3")],
                       users=[good_user("u1"), good_user("u2"), good_user("u3")], page_size=1)
         self.assertEqual([r["resource_id"] for r in collect_s3(aws)["records"]], ["b1", "b2", "b3"])
@@ -91,8 +91,8 @@ class FailedRequestTests(unittest.TestCase):
         self.assertEqual(records[1]["policy"]["status"], "available")
 
     def test_listing_that_fails_returns_an_error_not_an_empty_account(self):
-        # If AWS denies the list call, we do not know what is in the account.
-        # Treating that as an empty list would hide the failed scan.
+        # a denied list call does not mean the account is empty
+        # we need the error so the user knows the scan missed something
         aws = FakeAWS(buckets=[good_bucket("b1")], users=[good_user("u1")],
                       fail={"list_buckets": "AccessDenied", "list_users": "AccessDenied"})
         self.assertEqual(collect_s3(aws)["errors"][0]["operation"], "list_buckets")
@@ -108,8 +108,8 @@ class FailedRequestTests(unittest.TestCase):
 
 class MissingVsFailedTests(unittest.TestCase):
     def test_no_bucket_policy_is_missing_but_denied_is_failed(self):
-        # No policy means AWS confirmed there is not one. AccessDenied means
-        # we could not read it, so the checks need to show incomplete.
+        # no policy means AWS confirmed there is not one
+        # access denied means we could not read it, so the checks are incomplete
         missing = good_bucket("b1")
         missing["policy"] = None
         missing["block"] = None

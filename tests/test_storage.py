@@ -119,8 +119,8 @@ class StorageTests(unittest.TestCase):
 
     def test_a_failed_save_rolls_everything_back(self):
         scan = sample_scan()
-        # A bad severity makes an insert fail after some rows were added.
-        # Without a rollback, a partial scan could be left in the database.
+        # a bad severity makes the last insert fail after the others went in
+        # rollback keeps those partial rows out of the database
         scan["findings"][1]["severity"] = "Critical"
         ok, error = db.save_scan(scan, self.path)
         self.assertFalse(ok)

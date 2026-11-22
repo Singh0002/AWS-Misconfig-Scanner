@@ -109,8 +109,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertIn("get_bucket_policy", build_report(loaded))
 
     def test_ai_outage_keeps_the_findings(self):
-        # The scan is saved before the AI is called. An outage should not
-        # take away findings the rules already found.
+        # the scan is saved before the AI call, so an outage should not lose the findings
         aws = FakeAWS(buckets=[bad_bucket("b1")])
         outage = FakeAI(error=anthropic.APIConnectionError(request=REQUEST))
         scan, loaded = self.full_workflow(aws, ["S3"], outage)
@@ -182,8 +181,8 @@ class AppWorkflowTests(unittest.TestCase):
         self.assertFalse(self.download_button().proto.disabled)
 
     def test_failed_save_is_reported_and_results_stay(self):
-        # The scan can finish even if the database is locked. The user
-        # should still see the results and be able to download the report.
+        # the scan finished even though the database was locked
+        # the user should still be able to see and download the results
         failed = (False, {"stage": "storage", "operation": "save_scan", "resource_id": None,
                           "message": "database is locked"})
         with mock.patch.object(db, "save_scan", return_value=failed):
