@@ -51,7 +51,8 @@ class NormalResponseTests(unittest.TestCase):
 class PagingTests(unittest.TestCase):
     def test_every_page_of_buckets_and_users_is_read(self):
         # one item per page, so 3 buckets come back as 3 pages
-        # the scan needs all 3 pages
+
+      
         aws = FakeAWS(buckets=[good_bucket("b1"), good_bucket("b2"), good_bucket("b3")],
                       users=[good_user("u1"), good_user("u2"), good_user("u3")], page_size=1)
         self.assertEqual([r["resource_id"] for r in collect_s3(aws)["records"]], ["b1", "b2", "b3"])
