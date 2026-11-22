@@ -1,6 +1,6 @@
 """SQLite storage for CloudGuardian.
 
-Scans use the format in results.py. Credentials are never stored here.
+Scans use the format in results.py. Credentials are not ever stored here.
 
 Every function returns two things: the result and an error. If it worked the
 error is None. If it failed, the error is a dict with a message to show
@@ -80,7 +80,7 @@ def default_db_path():
     """Where the database file lives. Set CLOUDGUARDIAN_DB to use a different file."""
     if os.environ.get("CLOUDGUARDIAN_DB"):
         return Path(os.environ["CLOUDGUARDIAN_DB"])
-    if os.name == "nt":  # Windows
+    if os.name == "nt":  # Windows (less sure of status on ubuntu)
         return Path(os.environ["LOCALAPPDATA"]) / "CloudGuardian" / "cloudguardian.db"
     return Path.home() / ".local" / "share" / "cloudguardian" / "cloudguardian.db"
 
@@ -187,7 +187,7 @@ def list_scans(db_path=None):
 
 
 def load_scan(scan_id, db_path=None):
-    """Load one saved scan back into the results.py format."""
+    """Load one saved scan back into the results.py format"""
     conn = connect(db_path)
     try:
         row = conn.execute("SELECT * FROM scans WHERE scan_id = ?", (scan_id,)).fetchone()
@@ -229,7 +229,7 @@ def load_scan(scan_id, db_path=None):
 
 
 def delete_scan(scan_id, db_path=None):
-    """Delete a scan. Its checks, findings, explanations and errors are deleted too."""
+    """Delete a scan. Its checks, findings, explanations and errors are to be deleted, too"""
     conn = connect(db_path)
     try:
         cursor = conn.execute("DELETE FROM scans WHERE scan_id = ?", (scan_id,))
