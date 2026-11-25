@@ -39,10 +39,3 @@ Reviewed 11/13/2026 against `main` plus the changes in this branch.
 | S-11-4 | HTTPS for AWS and Anthropic | `test_integration.test_aws_and_anthropic_requests_use_https` | Pass (automated) |
 | S-11-5 | Tests with fake credentials | All of the above use the fake secrets in `tests/fakes.py` | Pass, 144 tests |
 | S-11-5 | Search after a real scan | Search the database, report, page and terminal for the real keys | Not run yet |
-
-## Still to do on the real account
-
-1. Run a scan with the read-only scanner user.
-2. Run `Scripts/readonly.py` and record the result in `docs/test_record.md`.
-3. Search `cloudguardian.db`, the downloaded report and the terminal output for the AWS
-   access key ID and the Anthropic key. None should be found.
